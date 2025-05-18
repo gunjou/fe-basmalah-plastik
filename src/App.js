@@ -1,24 +1,80 @@
-import logo from "./logo.svg";
-import "./App.css";
+import React, { useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Kasir from "./pages/Kasir";
+import Stock from "./pages/Stock";
+import DaftarPelanggan from "./pages/DaftarPelanggan";
+import Hutang from "./pages/Hutang";
+import Laporan from "./pages/Laporan";
+import Login from "./pages/Login";
+
+import DashboardLayout from "./layouts/DashboardLayout";
+import PublicLayout from "./layouts/PublicLayout";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        {/* Public route (tanpa sidebar & navbar) */}
+        <Route
+          path="/login"
+          element={
+            <PublicLayout>
+              <Login />
+            </PublicLayout>
+          }
+        />
+
+        {/* Protected routes (dengan sidebar & navbar) */}
+        <Route
+          path="/"
+          element={
+            <DashboardLayout>
+              <Kasir />
+            </DashboardLayout>
+          }
+        />
+        <Route
+          path="/kasir"
+          element={
+            <DashboardLayout>
+              <Kasir />
+            </DashboardLayout>
+          }
+        />
+        <Route
+          path="/stock"
+          element={
+            <DashboardLayout>
+              <Stock />
+            </DashboardLayout>
+          }
+        />
+        <Route
+          path="/pelanggan"
+          element={
+            <DashboardLayout>
+              <DaftarPelanggan />
+            </DashboardLayout>
+          }
+        />
+        <Route
+          path="/hutang"
+          element={
+            <DashboardLayout>
+              <Hutang />
+            </DashboardLayout>
+          }
+        />
+        <Route
+          path="/laporan"
+          element={
+            <DashboardLayout>
+              <Laporan />
+            </DashboardLayout>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
 
