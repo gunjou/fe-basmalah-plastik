@@ -5,6 +5,36 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const togglePassword = () => setShowPassword((prev) => !prev);
 
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setLoading(true);
+    try {
+      const res = await fetch("https://api.basmalahplastik.shop/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Simpan token ke localStorage/sessionStorage jika perlu
+        localStorage.setItem("token", data.token);
+        // Redirect ke halaman utama/dashboard (ganti sesuai kebutuhan)
+        window.location.href = "/kasir";
+      } else {
+        setErrorMsg(data.message || "Login gagal");
+      }
+    } catch (err) {
+      setErrorMsg("Terjadi kesalahan, silakan coba lagi.");
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-b from-[#72BDAF] to-[#1E686D] relative">
       {/* Wave image at the bottom */}
@@ -17,19 +47,22 @@ function Login() {
       <div className="md:w-1/2 w-full flex items-center justify-center p-8 z-10">
         <div className="w-full max-w-md bg-white p-8 rounded-[20px] shadow-lg">
           <h2 className="text-2xl font-bold text-left text-gray-800">Login</h2>
-          <div class="mb-6 text-sm">
+          <div className="mb-6 text-sm">
             <span>Login untuk menggunakan aplikasi</span>
           </div>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                Username
               </label>
               <input
-                type="email"
-                placeholder="you@example.com"
+                type="text"
+                placeholder="masukkan username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               />
             </div>
 
@@ -41,17 +74,23 @@ function Login() {
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                  required
                 />
                 <button
                   type="button"
                   onClick={togglePassword}
                   className="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
+
+            {errorMsg && <div className="text-red-600 text-sm">{errorMsg}</div>}
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center">
@@ -66,8 +105,9 @@ function Login() {
             <button
               type="submit"
               className="w-full px-4 py-2 text-white rounded-lg bg-[#1E686D] rounded-[15px] hover:bg-[#72BDAF] transition"
+              disabled={loading}
             >
-              Login
+              {loading ? "Memproses..." : "Login"}
             </button>
           </form>
 
