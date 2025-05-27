@@ -1,123 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import api from "../utils/api";
 import { IoQrCodeOutline, IoClose } from "react-icons/io5";
+
 const Kasir = () => {
-  // Data dummy
   const [sortBy, setSortBy] = useState("nama");
   const [sortAsc, setSortAsc] = useState(true);
 
-  const [data, setData] = useState([
-    {
-      id: 1,
-      nama: "Plastik A",
-      stok: 20,
-      harga: "100.000",
-      satuan: "Pcs",
-      no_batch: "B001",
-    },
-    {
-      id: 2,
-      nama: "Plastik B",
-      stok: 15,
-      harga: "100.000",
-      satuan: "Pack",
-      no_batch: "B002",
-    },
-    {
-      id: 3,
-      nama: "Plastik C",
-      stok: 30,
-      harga: "100.000",
-      satuan: "Kg",
-      no_batch: "B003",
-    },
-    {
-      id: 4,
-      nama: "Plastik A",
-      stok: 20,
-      harga: "100.000",
-      satuan: "Pcs",
-      no_batch: "B001",
-    },
-    {
-      id: 5,
-      nama: "Plastik B",
-      stok: 15,
-      harga: "100.000",
-      satuan: "Pack",
-      no_batch: "B002",
-    },
-    {
-      id: 6,
-      nama: "Plastik C",
-      stok: 30,
-      harga: "100.000",
-      satuan: "Kg",
-      no_batch: "B003",
-    },
-    {
-      id: 7,
-      nama: "Plastik A",
-      stok: 20,
-      harga: "100.000",
-      satuan: "Pcs",
-      no_batch: "B001",
-    },
-    {
-      id: 8,
-      nama: "Plastik B",
-      stok: 15,
-      harga: "100.000",
-      satuan: "Pack",
-      no_batch: "B002",
-    },
-    {
-      id: 9,
-      nama: "Plastik C",
-      stok: 30,
-      harga: "100.000",
-      satuan: "Kg",
-      no_batch: "B003",
-    },
-    {
-      id: 10,
-      nama: "Plastik A",
-      stok: 20,
-      harga: "100.000",
-      satuan: "Pcs",
-      no_batch: "B001",
-    },
-    {
-      id: 11,
-      nama: "Plastik B",
-      stok: 15,
-      harga: "100.000",
-      satuan: "Pack",
-      no_batch: "B002",
-    },
-    {
-      id: 12,
-      nama: "Plastik C",
-      stok: 30,
-      harga: "100.000",
-      satuan: "Kg",
-      no_batch: "B003",
-    },
-  ]);
+  const [data, setData] = useState([]);
 
-  const [dataPembelian, setDataPembelian] = useState([
-    { nama: "Plastik A", kuantitas: 20, satuan: "Pcs", harga: "100.000" },
-    { nama: "Plastik B", kuantitas: 15, satuan: "Pack", harga: "100.000" },
-    { nama: "Plastik C", kuantitas: 30, satuan: "Kg", harga: "100.000" },
-    { nama: "Plastik A", kuantitas: 20, satuan: "Pcs", harga: "100.000" },
-    { nama: "Plastik B", kuantitas: 15, satuan: "Pack", harga: "100.000" },
-    { nama: "Plastik C", kuantitas: 30, satuan: "Kg", harga: "100.000" },
-    { nama: "Plastik A", kuantitas: 20, satuan: "Pcs", harga: "100.000" },
-    { nama: "Plastik B", kuantitas: 15, satuan: "Pack", harga: "100.000" },
-    { nama: "Plastik C", kuantitas: 30, satuan: "Kg", harga: "100.000" },
-    { nama: "Plastik A", kuantitas: 20, satuan: "Pcs", harga: "100.000" },
-    { nama: "Plastik B", kuantitas: 15, satuan: "Pack", harga: "100.000" },
-    { nama: "Plastik C", kuantitas: 30, satuan: "Kg", harga: "100.000" },
-  ]);
+  // Data pembelian, mulai dari kosong
+  const [dataPembelian, setDataPembelian] = useState([]);
 
   // Handler untuk edit kuantitas/satuan
   const handlePembelianChange = (idx, field, value) => {
@@ -133,7 +25,6 @@ const Kasir = () => {
     return 0;
   });
 
-  // Icon SVG
   const SortIcon = ({ active, asc }) => (
     <svg
       className={`w-3 h-3 ms-1.5 inline ${
@@ -149,7 +40,6 @@ const Kasir = () => {
     </svg>
   );
 
-  // Handler
   const handleSort = (field) => {
     if (sortBy === field) {
       setSortAsc(!sortAsc);
@@ -161,8 +51,25 @@ const Kasir = () => {
 
   // State untuk modal daftar barang
   const [barangModalOpen, setBarangModalOpen] = useState(false);
-  const [diskonType, setDiskonType] = useState("persen"); // "persen" atau "nominal"
+  const [diskonType, setDiskonType] = useState("persen");
   const [diskonValue, setDiskonValue] = useState("");
+
+  const [produkList, setProdukList] = useState([]);
+  const [produkLoading, setProdukLoading] = useState(false);
+  const [produkError, setProdukError] = useState(null);
+
+  // Fetch produk saat modal daftar barang dibuka
+  useEffect(() => {
+    if (barangModalOpen) {
+      setProdukLoading(true);
+      setProdukError(null);
+      api
+        .get("/products/")
+        .then((res) => setProdukList(res.data))
+        .catch((err) => setProdukError("Gagal mengambil data produk"))
+        .finally(() => setProdukLoading(false));
+    }
+  }, [barangModalOpen]);
 
   return (
     <div className="">
@@ -185,37 +92,43 @@ const Kasir = () => {
             className="relative overflow-x-auto"
             style={{ maxHeight: "170px", overflowY: "auto" }}
           >
-            <table className="w-full text-sm text-left text-gray-500">
-              <tbody>
-                {dataPembelian.map((item, idx) => (
-                  <tr key={idx} className="bg-gray-200">
-                    <td className="px-0.5 py-0.5">{item.nama}</td>
-                    <td className="px-0.5 py-0.5">
-                      <input
-                        type="number"
-                        min={1}
-                        value={item.kuantitas}
-                        onChange={(e) =>
-                          handlePembelianChange(
-                            idx,
-                            "kuantitas",
-                            e.target.value
-                          )
-                        }
-                        className="w-16 border rounded px-1 py-0.5 text-center"
-                      />
-                    </td>
-                    <td className="px-0.5 py-0.5">{item.satuan}</td>
-                    <td className="px-0.5 py-0.5">Rp.{item.harga}</td>
-                    <td className="px-0.5 py-0.5">
-                      <button className="bg-white hover:bg-gray-300 text-black px-2 py-1 rounded text-xs">
-                        Hapus
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {dataPembelian.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                Silakan scan barang yang dibeli
+              </div>
+            ) : (
+              <table className="w-full text-sm text-left text-gray-500">
+                <tbody>
+                  {dataPembelian.map((item, idx) => (
+                    <tr key={idx} className="bg-gray-200">
+                      <td className="px-0.5 py-0.5">{item.nama}</td>
+                      <td className="px-0.5 py-0.5">
+                        <input
+                          type="number"
+                          min={1}
+                          value={item.kuantitas}
+                          onChange={(e) =>
+                            handlePembelianChange(
+                              idx,
+                              "kuantitas",
+                              e.target.value
+                            )
+                          }
+                          className="w-16 border rounded px-1 py-0.5 text-center"
+                        />
+                      </td>
+                      <td className="px-0.5 py-0.5">{item.satuan}</td>
+                      <td className="px-0.5 py-0.5">Rp.{item.harga}</td>
+                      <td className="px-0.5 py-0.5">
+                        <button className="bg-white hover:bg-gray-300 text-black px-2 py-1 rounded text-xs">
+                          Hapus
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
         <div class="flex justify-end mt-4">
@@ -345,87 +258,80 @@ const Kasir = () => {
                 className="relative overflow-x-auto shadow-md sm:rounded-lg"
                 style={{ maxHeight: "250px", overflowY: "auto" }}
               >
-                <table className="w-full text-sm text-left text-gray-500">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
-                    <tr>
-                      <th className="px-2 py-1.5 text-center">No</th>
-                      <th className="px-2 py-1.5 text-center">No Batch</th>
-                      <th
-                        className="px-2 py-1.5 cursor-pointer select-none"
-                        onClick={() => handleSort("nama")}
-                      >
-                        <div className="flex items-center">
-                          Nama Barang
-                          <SortIcon active={sortBy === "nama"} asc={sortAsc} />
-                        </div>
-                      </th>
-                      <th
-                        className="px-2 py-1.5 cursor-pointer select-none"
-                        onClick={() => handleSort("stok")}
-                      >
-                        <div className="flex items-center">
-                          Jumlah Stock
-                          <SortIcon active={sortBy === "stok"} asc={sortAsc} />
-                        </div>
-                      </th>
-                      <th
-                        className="px-2 py-1.5 cursor-pointer select-none"
-                        onClick={() => handleSort("satuan")}
-                      >
-                        <div className="flex items-center">
-                          Satuan
-                          <SortIcon
-                            active={sortBy === "satuan"}
-                            asc={sortAsc}
-                          />
-                        </div>
-                      </th>
-                      <th
-                        className="px-2 py-1.5 cursor-pointer select-none"
-                        onClick={() => handleSort("harga")}
-                      >
-                        <div className="flex items-center">
-                          Harga
-                          <SortIcon active={sortBy === "harga"} asc={sortAsc} />
-                        </div>
-                      </th>
-                      <th className="px-2 py-1.5">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedData.map((item, idx) => (
-                      <tr key={idx} className="bg-white border-b">
-                        <td className="px-2 py-1.5 text-center">{idx + 1}</td>
-                        <td className="px-2 py-1.5 text-center">
-                          {item.no_batch}
-                        </td>
-                        <td className="px-2 py-1.5">{item.nama}</td>
-                        <td className="px-2 py-1.5">{item.stok}</td>
-                        <td className="px-2 py-1.5">{item.satuan}</td>
-                        <td className="px-2 py-1.5">Rp.{item.harga}</td>
-                        <td className="px-2 py-1.5">
-                          <button
-                            onClick={() => {
-                              setDataPembelian((prev) => [
-                                ...prev,
-                                {
-                                  nama: item.nama,
-                                  kuantitas: 1,
-                                  satuan: item.satuan,
-                                  harga: item.harga,
-                                },
-                              ]);
-                              setBarangModalOpen(false);
-                            }}
-                            className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
-                          >
-                            Pilih
-                          </button>
-                        </td>
+                {produkLoading ? (
+                  <div className="text-center py-8">Memuat data...</div>
+                ) : produkError ? (
+                  <div className="text-center text-red-500 py-8">
+                    {produkError}
+                  </div>
+                ) : (
+                  <table className="w-full text-sm text-left text-gray-500">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1.5 text-center">No</th>
+                        <th className="px-2 py-1.5 text-center">Barcode</th>
+                        <th className="px-2 py-1.5">Nama Barang</th>
+                        <th className="px-2 py-1.5">Kategori</th>
+                        <th className="px-2 py-1.5">Satuan</th>
+                        <th className="px-2 py-1.5">Harga Jual</th>
+                        <th className="px-2 py-1.5">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {produkList.map((item, idx) => (
+                        <tr key={item.id} className="bg-white border-b">
+                          <td className="px-2 py-1.5 text-center">{idx + 1}</td>
+                          <td className="px-2 py-1.5 text-center">
+                            {item.barcode}
+                          </td>
+                          <td className="px-2 py-1.5">{item.nama}</td>
+                          <td className="px-2 py-1.5">{item.nama_kategori}</td>
+                          <td className="px-2 py-1.5">{item.nama_satuan}</td>
+                          <td className="px-2 py-1.5">Rp.{item.harga_jual}</td>
+                          <td className="px-2 py-1.5">
+                            <button
+                              onClick={() => {
+                                setDataPembelian((prev) => {
+                                  // Cek apakah barang sudah ada di pembelian
+                                  const idx = prev.findIndex(
+                                    (b) =>
+                                      b.nama === item.nama &&
+                                      b.satuan === item.nama_satuan
+                                  );
+                                  if (idx !== -1) {
+                                    // Jika sudah ada, tambahkan kuantitas
+                                    return prev.map((b, i) =>
+                                      i === idx
+                                        ? {
+                                            ...b,
+                                            kuantitas: Number(b.kuantitas) + 1,
+                                          }
+                                        : b
+                                    );
+                                  }
+                                  // Jika belum ada, tambahkan baru
+                                  return [
+                                    ...prev,
+                                    {
+                                      nama: item.nama,
+                                      kuantitas: 1,
+                                      satuan: item.nama_satuan,
+                                      harga: item.harga_jual,
+                                    },
+                                  ];
+                                });
+                                setBarangModalOpen(false);
+                              }}
+                              className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
+                            >
+                              Pilih
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>
