@@ -15,7 +15,15 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public route (tanpa sidebar & navbar) */}
+        {/* /login sebagai halaman awal */}
+        <Route
+          path="/"
+          element={
+            <PublicLayout>
+              <Login />
+            </PublicLayout>
+          }
+        />
         <Route
           path="/login"
           element={
@@ -26,14 +34,6 @@ function App() {
         />
 
         {/* Protected routes (dengan sidebar & navbar) */}
-        <Route
-          path="/"
-          element={
-            <DashboardLayout>
-              <Kasir />
-            </DashboardLayout>
-          }
-        />
         <Route
           path="/kasir"
           element={

@@ -16,22 +16,19 @@ function Login() {
     setErrorMsg("");
     setLoading(true);
     try {
-      const res = await fetch("https://api.basmalahplastik.shop/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        // Simpan token ke localStorage/sessionStorage jika perlu
+      const res = await api.post("/auth/login", { username, password });
+      const data = res.data;
+      console.log("Login response:", data); // Tambahkan ini
+      if (data && data.token) {
         localStorage.setItem("token", data.token);
-        // Redirect ke halaman utama/dashboard (ganti sesuai kebutuhan)
         window.location.href = "/kasir";
       } else {
         setErrorMsg(data.message || "Login gagal");
       }
     } catch (err) {
-      setErrorMsg("Terjadi kesalahan, silakan coba lagi.");
+      setErrorMsg(
+        err.response?.data?.message || "Terjadi kesalahan, silakan coba lagi."
+      );
     }
     setLoading(false);
   };

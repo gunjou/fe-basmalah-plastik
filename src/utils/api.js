@@ -3,10 +3,11 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "https://api.basmalahplastik.shop", // Ganti ke baseURL API production
+  // baseURL: "http://127.0.0.1:5000"
   headers: { "Content-Type": "application/json" },
 });
 
-// Interceptor request: tambahkan token
+//Interceptor request: tambahkan token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");

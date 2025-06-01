@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CiCirclePlus } from "react-icons/ci";
-import { IoQrCodeOutline, IoClose } from "react-icons/io5"; // tambahkan IoClose
+import { IoQrCodeOutline, IoClose } from "react-icons/io5";
 import { MdContactPage } from "react-icons/md";
 import api from "../utils/api";
 
@@ -41,44 +41,38 @@ const dummyPelanggan = [
 ];
 
 const Hutang = () => {
-  // Data dummy hutang
   const [sortBy, setSortBy] = useState("nama");
   const [sortAsc, setSortAsc] = useState(true);
 
-  const [data, setData] = useState([
-    {
-      id: 1,
-      nama: "Sindi Hikmala",
-      jmlh_hutang: "1.000.000",
-      status: "Belum Lunas",
-    },
-    {
-      id: 2,
-      nama: "Gabriela Watu",
-      jmlh_hutang: "500.000",
-      status: "Lunas",
-    },
-    {
-      id: 3,
-      nama: "Pinkan Ibanez",
-      jmlh_hutang: "750.000",
-      status: "Belum Lunas",
-    },
-  ]);
+  // State untuk data hutang dari API
+  const [data, setData] = useState([]);
+  const [hutangLoading, setHutangLoading] = useState(false);
+  const [hutangError, setHutangError] = useState(null);
+
+  // Ambil data hutang dari API saat mount
+  useEffect(() => {
+    setHutangLoading(true);
+    setHutangError(null);
+    api
+      .get("/hutang/")
+      .then((res) => setData(res.data || []))
+      .catch(() => setHutangError("Gagal mengambil data hutang"))
+      .finally(() => setHutangLoading(false));
+  }, []);
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newItem, setNewItem] = useState({
-    nama: "",
-    jmlh_hutang: "",
-    status: "",
+    nama_pelanggan: "",
+    sisa_hutang: "",
+    status_hutang: "",
   });
 
   // Handler untuk modal tambah
   const openAddModal = () => {
     setNewItem({
-      nama: "",
-      jmlh_hutang: "",
-      status: "",
+      nama_pelanggan: "",
+      sisa_hutang: "",
+      status_hutang: "",
     });
     setAddModalOpen(true);
   };
@@ -92,16 +86,23 @@ const Hutang = () => {
     setNewItem({ ...newItem, [name]: value });
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    setData((prev) => [
-      ...prev,
-      {
-        ...newItem,
-        id: prev.length ? prev[prev.length - 1].id + 1 : 1,
-      },
-    ]);
-    closeAddModal();
+    try {
+      const id_hutang = selectedPelanggan?.id_pelanggan;
+      await api.post(`/hutang/${id_hutang}`, {
+        //nama_pelanggan: newItem.nama_pelanggan,
+        sisa_hutang: newItem.sisa_hutang,
+        status_hutang: newItem.status_hutang,
+      });
+      setHutangLoading(true);
+      const res = await api.get("/hutang/");
+      setData(res.data || []);
+      closeAddModal();
+    } catch (err) {
+      alert("Gagal menambah hutang");
+      setHutangLoading(false);
+    }
   };
 
   const [pencatatanModalOpen, setPencatatanModalOpen] = useState(false);
@@ -109,9 +110,9 @@ const Hutang = () => {
   // Handler untuk modal tambah
   const openPencatatanModal = () => {
     setNewItem({
-      nama: "",
-      jmlh_hutang: "",
-      status: "",
+      nama_pelanggan: "",
+      sisa_hutang: "",
+      status_hutang: "",
     });
     setPencatatanModalOpen(true);
   };
@@ -148,8 +149,26 @@ const Hutang = () => {
     setPilihModalOpen(false);
   };
 
+  // State untuk daftar pelanggan dari API
+  const [pelangganList, setPelangganList] = useState([]);
+  const [pelangganLoading, setPelangganLoading] = useState(false);
+  const [pelangganError, setPelangganError] = useState(null);
+
   // Modal Pilih Kontak
   const [kontakModalOpen, setKontakModalOpen] = useState(false);
+
+  // Ambil data pelanggan saat modal dibuka
+  useEffect(() => {
+    if (kontakModalOpen) {
+      setPelangganLoading(true);
+      setPelangganError(null);
+      api
+        .get("/pelanggan/")
+        .then((res) => setPelangganList(res.data || []))
+        .catch(() => setPelangganError("Gagal mengambil data pelanggan"))
+        .finally(() => setPelangganLoading(false));
+    }
+  }, [kontakModalOpen]);
 
   // Handler untuk modal pilih kontak
   const openKontakModal = () => {
@@ -192,10 +211,23 @@ const Hutang = () => {
     }
   };
 
+  const [selectedPelanggan, setSelectedPelanggan] = useState(null);
+
+  const [searchPelanggan, setSearchPelanggan] = useState("");
+  const [tambahPelangganModalOpen, setTambahPelangganModalOpen] =
+    useState(false);
+
+  const openTambahPelangganModal = () => setTambahPelangganModalOpen(true);
+  // Filter pelanggan sesuai pencarian
+  const filteredPelangganList = pelangganList.filter((item) =>
+    item.nama_pelanggan
+      ?.toLowerCase()
+      .includes(searchPelanggan.trim().toLowerCase())
+  );
+
   return (
     <div className="">
       <h1 className="text-2xl font-bold pb-2">Hutang</h1>
-
       <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
         <div className="flex items-center justify-between space-x-2 mb-4">
           <p className="text-sm font-semibold">Daftar Hutang</p>
@@ -238,69 +270,94 @@ const Hutang = () => {
           className="relative overflow-x-auto shadow-md sm:rounded-lg"
           style={{ maxHeight: "300px", overflowY: "auto" }}
         >
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
-              <tr>
-                <th className="px-1 py-2 text-center">No</th>
-                <th
-                  className="px-1 py-2 cursor-pointer select-none"
-                  onClick={() => handleSort("nama")}
-                >
-                  <div className="flex items-center">
-                    Nama
-                    <SortIcon active={sortBy === "nama"} asc={sortAsc} />
-                  </div>
-                </th>
-                <th
-                  className="px-1 py-2 cursor-pointer select-none"
-                  onClick={() => handleSort("jmlh_hutang")}
-                >
-                  <div className="flex items-center">
-                    Jumlah Hutang
-                    <SortIcon active={sortBy === "jmlh_hutang"} asc={sortAsc} />
-                  </div>
-                </th>
-                <th
-                  className="px-1 py-2 cursor-pointer select-none"
-                  onClick={() => handleSort("status")}
-                >
-                  <div className="flex items-center">
-                    Status
-                    <SortIcon active={sortBy === "status"} asc={sortAsc} />
-                  </div>
-                </th>
-                <th className="px-1 py-2">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedData.map((item, idx) => (
-                <tr key={idx} className="bg-white border-b">
-                  <td className="px-1 py-1 text-center">{idx + 1}</td>
-                  <td className="px-1 py-1">{item.nama}</td>
-                  <td className="px-1 py-1">Rp.{item.jmlh_hutang}</td>
-                  <td className="px-1 py-1">
-                    <span
-                      className={
-                        item.status === "Lunas"
-                          ? "text-green-600 font-semibold"
-                          : "text-red-600 font-semibold"
-                      }
-                    >
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-1 py-1">
-                    <button
-                      className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
-                      onClick={openPilihModal}
-                    >
-                      Pilih
-                    </button>
-                  </td>
+          {hutangLoading ? (
+            <div className="text-center py-8">Memuat data hutang...</div>
+          ) : hutangError ? (
+            <div className="text-center text-red-500 py-8">{hutangError}</div>
+          ) : (
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
+                <tr>
+                  <th className="px-1 py-2 text-center">No</th>
+                  <th
+                    className="px-1 py-2 cursor-pointer select-none"
+                    onClick={() => handleSort("nama_pelanggan")}
+                  >
+                    <div className="flex items-center">
+                      Nama
+                      <SortIcon
+                        active={sortBy === "nama_pelanggan"}
+                        asc={sortAsc}
+                      />
+                    </div>
+                  </th>
+                  <th
+                    className="px-1 py-2 cursor-pointer select-none"
+                    onClick={() => handleSort("sisa_hutang")}
+                  >
+                    <div className="flex items-center">
+                      Jumlah Hutang
+                      <SortIcon
+                        active={sortBy === "sisa_hutang"}
+                        asc={sortAsc}
+                      />
+                    </div>
+                  </th>
+                  <th
+                    className="px-1 py-2 cursor-pointer select-none"
+                    onClick={() => handleSort("status_hutang")}
+                  >
+                    <div className="flex items-center">
+                      Status
+                      <SortIcon
+                        active={sortBy === "status_hutang"}
+                        asc={sortAsc}
+                      />
+                    </div>
+                  </th>
+                  <th className="px-1 py-2">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sortedData.map((item, idx) => (
+                  <tr
+                    key={item.id_pelanggan || idx}
+                    className="bg-white border-b"
+                  >
+                    <td className="px-1 py-1 text-center">{idx + 1}</td>
+                    <td className="px-1 py-1">{item.id_pelanggan}</td>
+                    <td className="px-1 py-1">Rp.{item.sisa_hutang}</td>
+                    <td className="px-1 py-1">
+                      <span
+                        className={
+                          item.status_hutang === "Lunas"
+                            ? "text-green-600 font-semibold"
+                            : "text-red-600 font-semibold"
+                        }
+                      >
+                        {item.status_hutang}
+                      </span>
+                    </td>
+                    <td className="px-1 py-1">
+                      <button
+                        className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
+                        onClick={() => {
+                          setSelectedPelanggan({
+                            id_pelanggan: item.id_pelanggan,
+                            sisa_hutang: item.sisa_hutang,
+                            status_hutang: item.status_hutang,
+                          });
+                          setPilihModalOpen(true);
+                        }}
+                      >
+                        Pilih
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
         <div className="flex items-center justify-between mt-4">
           <button
@@ -320,22 +377,24 @@ const Hutang = () => {
             <div className="flex">
               <button
                 className={`flex-1 py-3 font-semibold transition-all duration-200 ${
-                  newItem.status !== "Bayar"
+                  newItem.status_hutang !== "Bayar"
                     ? "bg-[#1E686D] text-white"
                     : "bg-gray-200 text-gray-700"
                 }`}
-                onClick={() => setNewItem((prev) => ({ ...prev, status: "" }))}
+                onClick={() =>
+                  setNewItem((prev) => ({ ...prev, status_hutang: "" }))
+                }
               >
                 Tambah Hutang
               </button>
               <button
                 className={`flex-1 py-3 font-semibold transition-all duration-200 ${
-                  newItem.status === "Bayar"
+                  newItem.status_hutang === "Bayar"
                     ? "bg-[#1E686D] text-white"
                     : "bg-gray-200 text-gray-700"
                 }`}
                 onClick={() =>
-                  setNewItem((prev) => ({ ...prev, status: "Bayar" }))
+                  setNewItem((prev) => ({ ...prev, status_hutang: "Bayar" }))
                 }
               >
                 Bayar Hutang
@@ -344,20 +403,21 @@ const Hutang = () => {
             {/* Konten Slide */}
             <div className="p-6">
               <h2 className="text-lg font-bold mb-4">
-                {newItem.status === "Bayar"
+                {newItem.status_hutang === "Bayar"
                   ? "Form Bayar Hutang"
                   : "Form Tambah Hutang"}
               </h2>
               {/* Form Tambah Hutang */}
-              {newItem.status !== "Bayar" && (
+              {newItem.status_hutang !== "Bayar" && (
                 <form onSubmit={handleAddSubmit} className="space-y-3">
                   <div>
                     <label className="block text-xs">Nama</label>
                     <div className="relative">
                       <input
                         type="text"
-                        name="nama"
-                        value={newItem.nama}
+                        readOnly
+                        name="nama_pelanggan"
+                        value={newItem.nama_pelanggan}
                         onChange={handleAddChange}
                         className="border rounded px-2 py-1 w-full pr-10"
                         required
@@ -376,8 +436,8 @@ const Hutang = () => {
                     <label className="block text-xs">Jumlah Hutang</label>
                     <input
                       type="text"
-                      name="jmlh_hutang"
-                      value={newItem.jmlh_hutang}
+                      name="sisa_hutang"
+                      value={newItem.sisa_hutang}
                       onChange={handleAddChange}
                       className="border rounded px-2 py-1 w-full"
                       required
@@ -401,7 +461,7 @@ const Hutang = () => {
                 </form>
               )}
               {/* Form Bayar Hutang */}
-              {newItem.status === "Bayar" && (
+              {newItem.status_hutang === "Bayar" && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -415,8 +475,8 @@ const Hutang = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        name="nama"
-                        value={newItem.nama}
+                        name="nama_pelanggan"
+                        value={newItem.nama_pelanggan}
                         onChange={handleAddChange}
                         className="border rounded px-2 py-1 w-full pr-10"
                         required
@@ -435,8 +495,8 @@ const Hutang = () => {
                     <label className="block text-xs">Jumlah Pembayaran</label>
                     <input
                       type="text"
-                      name="jmlh_hutang"
-                      value={newItem.jmlh_hutang}
+                      name="sisa_hutang"
+                      value={newItem.sisa_hutang}
                       onChange={handleAddChange}
                       className="border rounded px-2 py-1 w-full"
                       required
@@ -475,10 +535,13 @@ const Hutang = () => {
             >
               <IoClose size={28} />
             </button>
+
             {/* Header Pelanggan */}
             <div className="mt-4 py-2 mb-2 px-2 shadow-md bg-[#1E686D] w-full h-full">
               <div className="flex justify-between ml-2">
-                <h2 className="text-white text-lg font-bold">Gibran</h2>
+                <h2 className="text-white text-lg font-bold">
+                  {selectedPelanggan?.id_pelanggan || "-"}
+                </h2>
                 <button
                   type="button"
                   className="bg-green-500 text-xs text-white px-3 py-1 rounded-[20px] hover:bg-green-800 flex items-center"
@@ -491,7 +554,12 @@ const Hutang = () => {
                 <div className="flex justify-between ml-2 text-xs">
                   <div>
                     <h3>Total utang Pelanggan :</h3>
-                    <p className="text-red-600 font-semibold">Rp.1.200.000</p>
+                    <p className="text-red-600 font-semibold">
+                      Rp.
+                      {selectedPelanggan?.sisa_hutang?.toLocaleString(
+                        "id-ID"
+                      ) || "0"}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -566,22 +634,24 @@ const Hutang = () => {
             <div className="flex">
               <button
                 className={`flex-1 py-3 font-semibold transition-all duration-200 ${
-                  newItem.status !== "Bayar"
+                  newItem.status_hutang !== "Bayar"
                     ? "bg-[#1E686D] text-white"
                     : "bg-gray-200 text-gray-700"
                 }`}
-                onClick={() => setNewItem((prev) => ({ ...prev, status: "" }))}
+                onClick={() =>
+                  setNewItem((prev) => ({ ...prev, status_hutang: "" }))
+                }
               >
                 Tambah Hutang
               </button>
               <button
                 className={`flex-1 py-3 font-semibold transition-all duration-200 ${
-                  newItem.status === "Bayar"
+                  newItem.status_hutang === "Bayar"
                     ? "bg-[#1E686D] text-white"
                     : "bg-gray-200 text-gray-700"
                 }`}
                 onClick={() =>
-                  setNewItem((prev) => ({ ...prev, status: "Bayar" }))
+                  setNewItem((prev) => ({ ...prev, status_hutang: "Bayar" }))
                 }
               >
                 Bayar Hutang
@@ -590,7 +660,7 @@ const Hutang = () => {
             {/* Konten Slide */}
             <div className="p-6">
               {/* Form Tambah Hutang */}
-              {newItem.status !== "Bayar" && (
+              {newItem.status_hutang !== "Bayar" && (
                 <form onSubmit={handlePencatatanSubmit} className="space-y-3">
                   <div className="block font-bold">Gibran</div>
                   <div>
@@ -599,8 +669,8 @@ const Hutang = () => {
                     </label>
                     <input
                       type="text"
-                      name="jmlh_hutang"
-                      value={newItem.jmlh_hutang}
+                      name="sisa_hutang"
+                      value={newItem.sisa_hutang}
                       onChange={handlePencatatanChange}
                       className="border rounded px-2 py-1 w-full"
                       required
@@ -624,7 +694,7 @@ const Hutang = () => {
                 </form>
               )}
               {/* Form Bayar Hutang */}
-              {newItem.status === "Bayar" && (
+              {newItem.status_hutang === "Bayar" && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -640,8 +710,8 @@ const Hutang = () => {
                     </label>
                     <input
                       type="text"
-                      name="jmlh_hutang"
-                      value={newItem.jmlh_hutang}
+                      name="sisa_hutang"
+                      value={newItem.sisa_hutang}
                       onChange={handlePencatatanChange}
                       className="border rounded px-2 py-1 w-full"
                       required
@@ -669,34 +739,74 @@ const Hutang = () => {
         </div>
       )}
 
-      {/* Modal Kontak */}
       {kontakModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold mb-4">Daftar Pelanggan</h2>
-            <div className="space-y-3 mb-4">
-              {dummyPelanggan.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between border rounded-lg px-4 py-3 shadow-sm bg-gray-50"
-                >
-                  <div>
-                    <div className="font-semibold text-sm">{item.nama}</div>
-                    <div className="text-xs text-gray-500">{item.alamat}</div>
-                  </div>
-                  <button
-                    type="button"
-                    className="mt-2 md:mt-0 bg-[#1E686D] hover:bg-green-600 text-white px-4 py-1 rounded text-xs"
-                    onClick={() => {
-                      // Aksi pilih pelanggan
-                      setNewItem((prev) => ({ ...prev, nama: item.nama }));
-                      setKontakModalOpen(false);
-                    }}
-                  >
-                    Pilih
-                  </button>
+            {/* Search & Tambah Pelanggan */}
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="Cari pelanggan..."
+                className="border rounded-lg px-2 py-1 w-full"
+                value={searchPelanggan}
+                onChange={(e) => setSearchPelanggan(e.target.value)}
+              />
+              <button
+                type="button"
+                className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-2 rounded-lg text-xs"
+                onClick={openTambahPelangganModal}
+              >
+                Tambah
+              </button>
+            </div>
+            <div
+              className="space-y-3 mb-4"
+              style={{ maxHeight: 300, overflowY: "auto" }}
+            >
+              {pelangganLoading ? (
+                <div className="text-center py-4">Memuat data...</div>
+              ) : pelangganError ? (
+                <div className="text-center text-red-500 py-4">
+                  {pelangganError}
                 </div>
-              ))}
+              ) : filteredPelangganList.length === 0 ? (
+                <div className="text-center text-gray-400 py-4">
+                  Tidak ada data pelanggan
+                </div>
+              ) : (
+                filteredPelangganList.slice(0, 10).map((item) => (
+                  <div
+                    key={item.id_pelanggan}
+                    className="flex flex-col md:flex-row md:items-center justify-between border rounded-lg px-4 py-3 shadow-sm bg-gray-50"
+                  >
+                    <div>
+                      <div className="font-semibold text-sm">
+                        {item.nama_pelanggan}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-2 md:mt-0 bg-[#1E686D] hover:bg-green-600 text-white px-4 py-1 rounded text-xs"
+                      onClick={() => {
+                        setNewItem((prev) => ({
+                          ...prev,
+                          nama_pelanggan: item.nama_pelanggan,
+                        }));
+                        setKontakModalOpen(false);
+                      }}
+                    >
+                      Pilih
+                    </button>
+                  </div>
+                ))
+              )}
+              {filteredPelangganList.length > 10 && (
+                <div className="text-xs text-gray-400 text-center">
+                  Menampilkan 10 data pertama dari{" "}
+                  {filteredPelangganList.length} hasil
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button

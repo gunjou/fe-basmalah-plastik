@@ -4,7 +4,7 @@ import { IoQrCodeOutline, IoClose } from "react-icons/io5";
 import api from "../utils/api";
 
 const Stock = () => {
-  const [sortBy, setSortBy] = useState("nama");
+  const [sortBy, setSortBy] = useState("nama_produk"); // Default sort by nama_produk
   const [sortAsc, setSortAsc] = useState(true);
 
   // State untuk data produk dari API
@@ -17,8 +17,8 @@ const Stock = () => {
     setLoading(true);
     setError(null);
     api
-      .get("/products/")
-      .then((res) => setData(res.data))
+      .get("/stok/")
+      .then((res) => setData(res.data.data))
       .catch(() => setError("Gagal mengambil data produk"))
       .finally(() => setLoading(false));
   }, []);
@@ -45,21 +45,24 @@ const Stock = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.put(`/products/${editItem.id}/`, {
-        nama: editItem.nama,
+      await api.put(`/stok/${editItem.id_stok}`, {
+        nama_produk: editItem.nama_produk,
         barcode: editItem.barcode,
-        id_kategori: categories.find(
-          (cat) => cat.nama === (editItem.kategori || editItem.nama_kategori)
-        )?.id,
-        id_satuan: units.find(
-          (unit) => unit.nama === (editItem.satuan || editItem.nama_satuan)
-        )?.id,
-        harga_beli: editItem.harga_beli,
-        harga_jual: editItem.harga_jual,
+        kategori: editItem.kategori,
+        satuan: editItem.satuan,
+        // id_kategori: categories.find(
+        //   (cat) => cat.nama === (editItem.kategori || editItem.kategori)
+        // )?.id,
+        // id_satuan: units.find(
+        //   (unit) => unit.nama === (editItem.satuan || editItem.satuan)
+        // )?.id,
+        harga_beli: Number(editItem.harga_beli),
+        harga_jual: Number(editItem.harga_jual),
+        jumlah_stock: Number(editItem.jumlah),
       });
       // Refresh data produk setelah edit
-      const res = await api.get("/products/");
-      setData(res.data);
+      const res = await api.get("/stok/");
+      setData(res.data.data);
       closeModal();
     } catch (err) {
       alert(
@@ -71,43 +74,44 @@ const Stock = () => {
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newItem, setNewItem] = useState({
-    nama: "",
+    nama_produk: "",
     barcode: "",
     kategori: "",
     satuan: "",
     harga_beli: "",
     harga_jual: "",
+    jumlah: "",
   });
 
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]); // Tambah state untuk satuan
 
   // Fetch kategori dari API saat mount
-  useEffect(() => {
-    api
-      .get("/categories/")
-      .then((res) => setCategories(res.data))
-      .catch(() => setCategories([]));
-  }, []);
+  // useEffect(() => {
+  //   api
+  //     .get("/categories/")
+  //     .then((res) => setCategories(res.data))
+  //     .catch(() => setCategories([]));
+  // }, []);
 
-  // Fetch satuan dari API saat mount
-  useEffect(() => {
-    api
-      .get("/units/")
-      .then((res) => setUnits(res.data))
-      .catch(() => setUnits([]));
-  }, []);
+  // // Fetch satuan dari API saat mount
+  // useEffect(() => {
+  //   api
+  //     .get("/units/")
+  //     .then((res) => setUnits(res.data))
+  //     .catch(() => setUnits([]));
+  // }, []);
 
   // Handler untuk modal tambah
   const openAddModal = () => {
     setNewItem({
-      nama: "",
+      nama_produk: "",
       barcode: "",
       kategori: "",
       satuan: "",
       harga_beli: "",
       harga_jual: "",
-      jumlah_stok: "", // Tambahkan jumlah stok default
+      jumlah: "",
     });
     setAddModalOpen(true);
   };
@@ -124,18 +128,21 @@ const Stock = () => {
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/products/", {
-        nama: newItem.nama,
+      await api.post("/stok/", {
+        nama_produk: newItem.nama_produk,
         barcode: newItem.barcode,
-        id_kategori: categories.find((cat) => cat.nama === newItem.kategori)
-          ?.id,
-        id_satuan: units.find((unit) => unit.nama === newItem.satuan)?.id,
+        kategori: newItem.kategori,
+        satuan: newItem.satuan,
+        // id_kategori: categories.find((cat) => cat.nama === newItem.kategori)
+        //   ?.id,
+        // id_satuan: units.find((unit) => unit.nama === newItem.satuan)?.id,
         harga_beli: newItem.harga_beli,
         harga_jual: newItem.harga_jual,
+        jumlah: newItem.jumlah,
       });
       // Refresh data produk setelah tambah
-      const res = await api.get("/products/");
-      setData(res.data);
+      const res = await api.get("/stok/");
+      setData(res.data.data);
       closeAddModal();
     } catch (err) {
       alert("Gagal menambah barang. Pastikan data sudah benar.");
@@ -173,6 +180,120 @@ const Stock = () => {
       setSortAsc(true);
     }
   };
+
+  const [mutasiModalOpen, setMutasiModalOpen] = useState(false);
+  const [mutasiForm, setMutasiForm] = useState({
+    tanggal_awal: "",
+    tanggal_akhir: "",
+    id_lokasi_asal: "",
+    id_lokasi_tujuan: "",
+  });
+  const [lokasiList, setLokasiList] = useState([]);
+
+  // Fetch lokasi untuk dropdown
+  useEffect(() => {
+    if (mutasiModalOpen) {
+      api
+        .get("/lokasi/")
+        .then((res) => setLokasiList(res.data || []))
+        .catch(() => setLokasiList([]));
+    }
+  }, [mutasiModalOpen]);
+
+  const openMutasiModal = () => setMutasiModalOpen(true);
+  const closeMutasiModal = () => setMutasiModalOpen(false);
+
+  const handleMutasiChange = (e) => {
+    const { name, value } = e.target;
+    setMutasiForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const [mutasiItems, setMutasiItems] = useState([]);
+
+  // Handler untuk mengubah qty mutasi
+  const handleMutasiQtyChange = (idx, value) => {
+    setMutasiItems((prev) =>
+      prev.map((item, i) =>
+        i === idx ? { ...item, qty: Number(value) } : item
+      )
+    );
+  };
+
+  // Handler untuk menghapus produk dari daftar mutasi
+  const handleHapusMutasi = (idx) => {
+    setMutasiItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Contoh: Tambahkan produk ke mutasiItems saat klik tombol "Mutasi" di tabel utama
+  const handleAddToMutasi = (item) => {
+    // Cegah duplikasi produk
+    if (!mutasiItems.some((x) => x.id_stok === item.id_stok)) {
+      setMutasiItems((prev) => [
+        ...prev,
+        {
+          ...item,
+          qty: 1, // default qty mutasi
+        },
+      ]);
+    }
+  };
+
+  // State untuk modal lihat data mutasi
+  const [lihatMutasiOpen, setLihatMutasiOpen] = useState(false);
+  const [filterMutasi, setFilterMutasi] = useState({
+    tanggal_awal: "",
+    tanggal_akhir: "",
+    id_lokasi_asal: "",
+    id_lokasi_tujuan: "",
+    id_produk: "",
+  });
+  const [dataMutasi, setDataMutasi] = useState([]);
+  const [loadingMutasi, setLoadingMutasi] = useState(false);
+  const [produkList, setProdukList] = useState([]);
+
+  // Fetch lokasi dan produk untuk filter saat modal dibuka
+  useEffect(() => {
+    if (lihatMutasiOpen) {
+      api.get("/lokasi/").then((res) => setLokasiList(res.data || []));
+      api.get("/stok/").then((res) => setProdukList(res.data.data || []));
+    }
+  }, [lihatMutasiOpen]);
+
+  // Handler filter
+  const handleFilterMutasiChange = (e) => {
+    const { name, value } = e.target;
+    setFilterMutasi((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Fetch data mutasi dari endpoint baru
+  useEffect(() => {
+    if (lihatMutasiOpen) {
+      setLoadingMutasi(true);
+      api
+        .get("/mutasi-stok", {
+          params: {
+            tanggal_awal: filterMutasi.tanggal_awal,
+            tanggal_akhir: filterMutasi.tanggal_akhir,
+            id_lokasi_asal: filterMutasi.id_lokasi_asal,
+            id_lokasi_tujuan: filterMutasi.id_lokasi_tujuan,
+            id_produk: filterMutasi.id_produk,
+          },
+        })
+        .then((res) => setDataMutasi(res.data.data || []))
+        .catch(() => setDataMutasi([]))
+        .finally(() => setLoadingMutasi(false));
+    }
+  }, [
+    lihatMutasiOpen,
+    filterMutasi.tanggal_awal,
+    filterMutasi.tanggal_akhir,
+    filterMutasi.id_lokasi_asal,
+    filterMutasi.id_lokasi_tujuan,
+    filterMutasi.id_produk,
+  ]);
+
+  const openLihatMutasi = () => setLihatMutasiOpen(true);
+  const closeLihatMutasi = () => setLihatMutasiOpen(false);
 
   return (
     <div className="">
@@ -240,11 +361,14 @@ const Stock = () => {
                   </th>
                   <th
                     className="px-1 py-2 cursor-pointer select-none"
-                    onClick={() => handleSort("nama")}
+                    onClick={() => handleSort("nama_produk")}
                   >
                     <div className="flex items-center">
                       Nama Barang
-                      <SortIcon active={sortBy === "nama"} asc={sortAsc} />
+                      <SortIcon
+                        active={sortBy === "nama_produk"}
+                        asc={sortAsc}
+                      />
                     </div>
                   </th>
                   <th className="px-1 py-2">Kategori</th>
@@ -293,18 +417,30 @@ const Stock = () => {
                   <tr key={item.id || idx} className="bg-white border-b">
                     <td className="px-1 py-1 text-center">{idx + 1}</td>
                     <td className="px-1 py-1">{item.barcode}</td>
-                    <td className="px-1 py-1">{item.nama}</td>
-                    <td className="px-1 py-1">{item.nama_kategori}</td>
-                    <td className="px-1 py-1">{item.nama_satuan}</td>
+                    <td className="px-1 py-1">{item.nama_produk}</td>
+                    <td className="px-1 py-1">{item.kategori}</td>
+                    <td className="px-1 py-1">{item.satuan}</td>
                     <td className="px-1 py-1">Rp.{item.harga_beli}</td>
                     <td className="px-1 py-1">Rp.{item.harga_jual}</td>
-                    <td className="px-1 py-1">{item.jumlah_stok}</td>
+                    <td className="px-1 py-1">{item.jumlah}</td>
                     <td className="px-1 py-1">
                       <button
-                        className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
+                        className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs"
+                        onClick={() => handleAddToMutasi(item)}
+                      >
+                        Mutasi
+                      </button>
+                      <button
+                        className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs"
                         onClick={() => openEditModal(item)}
                       >
                         Edit
+                      </button>
+                      <button
+                        className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-xs"
+                        onClick={() => openEditModal(item)}
+                      >
+                        Hapus
                       </button>
                     </td>
                   </tr>
@@ -314,14 +450,85 @@ const Stock = () => {
           )}
         </div>
         <div className="flex items-center justify-between mt-4">
-          <button
-            className="bg-[#1E686D] p-2 rounded-lg text-xs text-white hover:bg-green-600"
-            onClick={openAddModal}
+          <div className="flex space-x-2">
+            <button
+              className="bg-[#1E686D] p-2 rounded-lg text-xs text-white hover:bg-green-600"
+              onClick={openAddModal}
+            >
+              Tambah Stock Barang
+            </button>
+            <button
+              className="bg-green-600 p-2 rounded-lg text-xs text-white hover:bg-green-700"
+              onClick={openLihatMutasi}
+            >
+              Lihat Data Mutasi
+            </button>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-2 shadow-md mt-4">
+          <div
+            className="relative overflow-x-auto"
+            style={{ maxHeight: "170px", overflowY: "auto" }}
           >
-            Tambah Stock Barang
-          </button>
+            {mutasiItems.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                Produk yang dimutasi muncul disini
+              </div>
+            ) : (
+              <>
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead>
+                    <tr>
+                      <th className="px-0.5 py-0.5">Nama Produk</th>
+                      <th className="px-0.5 py-0.5">Qty Mutasi</th>
+                      <th className="px-0.5 py-0.5">Satuan</th>
+                      <th className="px-0.5 py-0.5">Harga Jual</th>
+                      <th className="px-0.5 py-0.5">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mutasiItems.map((item, idx) => (
+                      <tr key={idx} className="bg-gray-200">
+                        <td className="px-0.5 py-0.5">{item.nama_produk}</td>
+                        <td className="px-0.5 py-0.5">
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.qty}
+                            onChange={(e) =>
+                              handleMutasiQtyChange(idx, e.target.value)
+                            }
+                            className="w-16 border rounded px-1 py-0.5 text-center"
+                          />
+                        </td>
+                        <td className="px-0.5 py-0.5">{item.satuan}</td>
+                        <td className="px-0.5 py-0.5">Rp.{item.harga_jual}</td>
+                        <td className="px-0.5 py-0.5">
+                          <button
+                            className="bg-white hover:bg-gray-300 text-black px-2 py-1 rounded text-xs"
+                            onClick={() => handleHapusMutasi(idx)}
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="flex justify-end mt-2">
+                  <button
+                    className="bg-[#1E686D] hover:bg-green-600 text-white px-4 py-1 rounded text-xs"
+                    onClick={openMutasiModal}
+                  >
+                    Kirim
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
+
       {/* Modal Tambah */}
       {addModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
@@ -344,8 +551,8 @@ const Stock = () => {
                 <label className="block text-xs">Nama Barang</label>
                 <input
                   type="text"
-                  name="nama"
-                  value={newItem.nama}
+                  name="nama_produk"
+                  value={newItem.nama_produk}
                   onChange={handleAddChange}
                   className="border rounded px-2 py-1 w-full"
                   required
@@ -363,6 +570,28 @@ const Stock = () => {
                 />
               </div>
               <div>
+                <label className="block text-xs">Kategori</label>
+                <input
+                  type="text"
+                  name="kategori"
+                  value={newItem.kategori}
+                  onChange={handleAddChange}
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs">Satuan</label>
+                <input
+                  type="text"
+                  name="satuan"
+                  value={newItem.satuan}
+                  onChange={handleAddChange}
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                />
+              </div>
+              {/* <div>
                 <label className="block text-xs">Kategori</label>
                 <select
                   name="kategori"
@@ -395,7 +624,7 @@ const Stock = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
               <div>
                 <label className="block text-xs">Harga Beli</label>
                 <input
@@ -422,8 +651,8 @@ const Stock = () => {
                 <label className="block text-xs">Jumlah Stock</label>
                 <input
                   type="number"
-                  name="jumlah_stok"
-                  value={newItem.jumlah_stok}
+                  name="jumlah"
+                  value={newItem.jumlah}
                   onChange={handleAddChange}
                   className="border rounded px-2 py-1 w-full"
                   required
@@ -449,6 +678,7 @@ const Stock = () => {
           </div>
         </div>
       )}
+
       {/* Modal Edit */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
@@ -460,8 +690,8 @@ const Stock = () => {
                 <label className="block text-xs">Nama Barang</label>
                 <input
                   type="text"
-                  name="nama"
-                  value={editItem.nama}
+                  name="nama_produk"
+                  value={editItem.nama_produk}
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
@@ -481,9 +711,21 @@ const Stock = () => {
 
               <div>
                 <label className="block text-xs">Kategori</label>
+                <input
+                  type="text"
+                  name="kategori"
+                  value={editItem.kategori}
+                  onChange={handleEditChange}
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                />
+              </div>
+
+              {/* <div>
+                <label className="block text-xs">Kategori</label>
                 <select
                   name="kategori"
-                  value={editItem.kategori || editItem.nama_kategori || ""}
+                  value={editItem.kategori || editItem.kategori || ""}
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
@@ -495,12 +737,25 @@ const Stock = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
+
               <div>
+                <label className="block text-xs">Satuan</label>
+                <input
+                  type="text"
+                  name="satuan"
+                  value={editItem.satuan}
+                  onChange={handleEditChange}
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                />
+              </div>
+
+              {/* <div>
                 <label className="block text-xs">Satuan</label>
                 <select
                   name="satuan"
-                  value={editItem.satuan || editItem.nama_satuan || ""} // gunakan value dari data yang sedang diedit
+                  value={editItem.satuan || editItem.satuan || ""} // gunakan value dari data yang sedang diedit
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
@@ -512,11 +767,12 @@ const Stock = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
+
               <div>
                 <label className="block text-xs">Harga Beli</label>
                 <input
-                  type="text"
+                  type="number"
                   name="harga_beli"
                   value={editItem.harga_beli}
                   onChange={handleEditChange}
@@ -527,9 +783,20 @@ const Stock = () => {
               <div>
                 <label className="block text-xs">Harga Jual</label>
                 <input
-                  type="text"
+                  type="number"
                   name="harga_jual"
                   value={editItem.harga_jual}
+                  onChange={handleEditChange}
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs">Jumlah Stock</label>
+                <input
+                  type="number"
+                  name="jumlah_stock"
+                  value={editItem.jumlah}
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
@@ -551,6 +818,178 @@ const Stock = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Mutasi Stock */}
+      {mutasiModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
+            <h2 className="text-lg font-bold mb-4">Mutasi Stock</h2>
+            <form className="space-y-4">
+              <div>
+                <label className="block text-xs mb-1">Lokasi Asal</label>
+                <select
+                  name="id_lokasi_asal"
+                  value={mutasiForm.id_lokasi_asal}
+                  onChange={handleMutasiChange}
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                >
+                  <option value="">Pilih Lokasi Asal</option>
+                  {lokasiList.map((lokasi) => (
+                    <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                      {lokasi.nama_lokasi}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Lokasi Tujuan</label>
+                <select
+                  name="id_lokasi_tujuan"
+                  value={mutasiForm.id_lokasi_tujuan}
+                  onChange={handleMutasiChange}
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                >
+                  <option value="">Pilih Lokasi Tujuan</option>
+                  {lokasiList.map((lokasi) => (
+                    <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                      {lokasi.nama_lokasi}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeMutasiModal}
+                  className="text-sm px-4 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1 text-sm rounded-lg bg-[#1E686D] hover:bg-green-600 text-white"
+                  // onClick={handleMutasiSubmit}
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Lihat Data Mutasi */}
+      {lihatMutasiOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">Data Mutasi Stock</h2>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={closeLihatMutasi}
+              >
+                <IoClose size={24} />
+              </button>
+            </div>
+            <div className="flex flex-col md:flex-row gap-2 mb-4">
+              <input
+                type="date"
+                name="tanggal_awal"
+                value={filterMutasi.tanggal_awal}
+                onChange={handleFilterMutasiChange}
+                className="border rounded px-2 py-1 text-xs"
+                placeholder="Tanggal Awal"
+              />
+              <input
+                type="date"
+                name="tanggal_akhir"
+                value={filterMutasi.tanggal_akhir}
+                onChange={handleFilterMutasiChange}
+                className="border rounded px-2 py-1 text-xs"
+                placeholder="Tanggal Akhir"
+              />
+              <select
+                name="id_lokasi_asal"
+                value={filterMutasi.id_lokasi_asal}
+                onChange={handleFilterMutasiChange}
+                className="border rounded px-2 py-1 text-xs"
+              >
+                <option value="">Lokasi Asal</option>
+                {lokasiList.map((lokasi) => (
+                  <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                    {lokasi.nama_lokasi}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="id_lokasi_tujuan"
+                value={filterMutasi.id_lokasi_tujuan}
+                onChange={handleFilterMutasiChange}
+                className="border rounded px-2 py-1 text-xs"
+              >
+                <option value="">Lokasi Tujuan</option>
+                {lokasiList.map((lokasi) => (
+                  <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                    {lokasi.nama_lokasi}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="id_produk"
+                value={filterMutasi.id_produk}
+                onChange={handleFilterMutasiChange}
+                className="border rounded px-2 py-1 text-xs"
+              >
+                <option value="">Pilih Produk</option>
+                {produkList.map((produk) => (
+                  <option key={produk.id_stok} value={produk.id_stok}>
+                    {produk.nama_produk}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div
+              className="relative overflow-x-auto"
+              style={{ maxHeight: "300px", overflowY: "auto" }}
+            >
+              {loadingMutasi ? (
+                <div className="text-center py-8">Memuat data mutasi...</div>
+              ) : dataMutasi.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  Tidak ada data mutasi
+                </div>
+              ) : (
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead>
+                    <tr>
+                      <th className="px-2 py-1">Tanggal</th>
+                      <th className="px-2 py-1">Nama Produk</th>
+                      <th className="px-2 py-1">Qty</th>
+                      <th className="px-2 py-1">Satuan</th>
+                      <th className="px-2 py-1">Lokasi Asal</th>
+                      <th className="px-2 py-1">Lokasi Tujuan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dataMutasi.map((item, idx) => (
+                      <tr key={idx} className="bg-gray-100">
+                        <td className="px-2 py-1">{item.tanggal}</td>
+                        <td className="px-2 py-1">{item.nama_produk}</td>
+                        <td className="px-2 py-1">{item.qty}</td>
+                        <td className="px-2 py-1">{item.satuan}</td>
+                        <td className="px-2 py-1">{item.lokasi_asal}</td>
+                        <td className="px-2 py-1">{item.lokasi_tujuan}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       )}
