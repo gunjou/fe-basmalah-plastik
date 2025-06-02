@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "../utils/api";
+import { FaPlusCircle } from "react-icons/fa";
 import { IoQrCodeOutline, IoClose } from "react-icons/io5";
 import { MdContactPage } from "react-icons/md";
 
@@ -14,6 +15,14 @@ const getLS = (key, fallback) => {
 };
 const setLS = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
+};
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
 };
 
 const Kasir = () => {
@@ -78,7 +87,7 @@ const Kasir = () => {
       setProdukLoading(true);
       setProdukError(null);
       api
-        .get("/produk/")
+        .get("/stok/", { headers: getAuthHeaders() })
         .then((res) => setProdukList(res.data.data))
         .catch((err) => setProdukError("Gagal mengambil data produk"))
         .finally(() => setProdukLoading(false));
@@ -99,7 +108,7 @@ const Kasir = () => {
       setPelangganLoading(true);
       setPelangganError(null);
       api
-        .get("/pelanggan/")
+        .get("/pelanggan/", { headers: getAuthHeaders() })
         .then((res) => setPelangganList(res.data || []))
         .catch(() => setPelangganError("Gagal mengambil data pelanggan"))
         .finally(() => setPelangganLoading(false));
@@ -182,31 +191,126 @@ const Kasir = () => {
     setKontakModalOpen(false);
   };
 
+  // const [idKasir, setIdKasir] = useState("");
+  // const [idLokasi, setIdLokasi] = useState("");
+
+  const handleSubmitTransaksi = async () => {
+    // if (!idKasir || !idLokasi || dataPembelian.length === 0) {
+    //   alert("ID Kasir, ID Lokasi, dan daftar pembelian wajib diisi.");
+    //   return;
+    // }
+
+    try {
+      const payload = {
+        id_kasir: 1,
+        id_lokasi: 1,
+        id_pelanggan: Number(newItem.id_pelanggan) || null,
+        nama_pelanggan: newItem.nama_pelanggan || "",
+        kontak: newItem.kontak || "",
+        total: Math.round(total),
+        tunai: Math.round(bayarNominal),
+        kembalian: Math.max(0, Math.round(kembalian)),
+        items: dataPembelian.map((item) => ({
+          id_produk: Number(item.id_produk), // pastikan integer dan tidak null
+          qty: Number(item.qty),
+          harga_jual: Number(item.harga_jual),
+          //harga_satuan: Number(item.harga_satuan ?? item.harga_jual), // fallback ke harga_jual jika harga_satuan tidak ada
+        })),
+      };
+
+      // Validasi agar tidak ada id_produk null/NaN
+      if (payload.items.some((i) => !i.id_produk && i.id_produk !== 0)) {
+        alert("Ada produk dengan ID tidak valid.");
+        return;
+      }
+
+      await api.post("/transaksi/", payload, {
+        headers: getAuthHeaders(),
+        //withCredentials: true,
+      });
+
+      alert("Transaksi berhasil disimpan!");
+      setDataPembelian([]);
+      setBayar("");
+      setBayarNominal(0);
+      setDiskonValue("");
+    } catch (err) {
+      console.error(err);
+      alert(
+        "Gagal menyimpan transaksi:\n" +
+          (err.response?.data?.detail || err.message)
+      );
+    }
+  };
+
+  const scanInputRef = useRef(null);
+
+  // Fokus otomatis ke input scan saat komponen dirender
+  useEffect(() => {
+    if (scanInputRef.current) {
+      scanInputRef.current.focus();
+    }
+  }, []);
+
+  const [lokasiList, setLokasiList] = useState([]);
+  // State untuk modal lihat data mutasi
+  const [lihatHistoryTransaksiOpen, setLihatHistoryTransaksi] = useState(false);
+  const [filterHistoryTransaksi, setFilterHistoryTransaksi] = useState({
+    tanggal_awal: "",
+    tanggal_akhir: "",
+    status_hutang: "",
+    id_pelanggan: "",
+  });
+  const [dataHistoryTransaksi, setDataHistoryTransaksi] = useState([]);
+  const [loadingHistoryTransaksi, setLoadingHistoryTransaksi] = useState(false);
+  const [historyTransaksiList, setHistoryTransaksiList] = useState([]);
+
+  // Fetch lokasi dan produk untuk filter saat modal dibuka
+  useEffect(() => {
+    if (lihatHistoryTransaksiOpen) {
+      api
+        .get("/lokasi/", { headers: getAuthHeaders() })
+        .then((res) => setLokasiList(res.data || []));
+    }
+  }, [lihatHistoryTransaksiOpen]);
+
+  // Handler filter
+  const handleFilterRiwayatTransaksiChange = (e) => {
+    const { name, value } = e.target;
+    setFilterHistoryTransaksi((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Fetch data mutasi dari endpoint baru
+  useEffect(() => {
+    if (lihatHistoryTransaksiOpen) {
+      setLoadingHistoryTransaksi(true);
+      api
+        .get("/transaksi/", {
+          headers: getAuthHeaders(),
+          params: {
+            tanggal_awal: filterHistoryTransaksi.tanggal_awal,
+            tanggal_akhir: filterHistoryTransaksi.tanggal_akhir,
+            id_pelanggan: filterHistoryTransaksi.id_pelanggan,
+          },
+        })
+        .then((res) => setDataHistoryTransaksi(res.data || []))
+        .catch(() => setDataHistoryTransaksi([]))
+        .finally(() => setLoadingHistoryTransaksi(false));
+    }
+  }, [
+    lihatHistoryTransaksiOpen,
+    filterHistoryTransaksi.tanggal_awal,
+    filterHistoryTransaksi.tanggal_akhir,
+    filterHistoryTransaksi.id_pelanggan,
+  ]);
+
+  const openLihatHistoryTransaksi = () => setLihatHistoryTransaksi(true);
+  const closeLihatHistoryTransaksi = () => setLihatHistoryTransaksi(false);
+
   return (
     <div className="">
       <h1 className="text-2xl font-bold pb-2">Kasir</h1>
       <div className="bg-white rounded-lg py-4 px-6 shadow-md">
-        {/* Tambahkan input ID Kasir & ID Lokasi di sini */}
-        <div className="flex gap-4 mb-4">
-          <div>
-            <label className="block text-xs text-gray-700 mb-1">ID Kasir</label>
-            <input
-              type="text"
-              className="border rounded-lg px-2 py-1 w-32"
-              placeholder="ID Kasir"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-700 mb-1">
-              ID Lokasi
-            </label>
-            <input
-              type="text"
-              className="border rounded-lg px-2 py-1 w-32"
-              placeholder="ID Lokasi"
-            />
-          </div>
-        </div>
         <div className="text-sm font-semibold">Pembelian</div>
         <div className="text-xs text-gray-500">
           Detail pembelian ditampilkan disini
@@ -218,8 +322,54 @@ const Kasir = () => {
           >
             Lihat Daftar Produk
           </button>
+          <button
+            className="bg-[#1E686D] p-2 rounded-lg text-xs text-white hover:bg-green-600"
+            onClick={() => openLihatHistoryTransaksi(true)}
+          >
+            Lihat Daftar Produk
+          </button>
+          {/* Input scan barcode/QR */}
+          <input
+            ref={scanInputRef}
+            type="text"
+            placeholder="Scan/masukkan barcode produk"
+            className="border rounded-lg px-2 py-1 text-sm w-56 hover:border-[#1E686D] focus:outline-none focus:ring-2 focus:ring-[#1E686D]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.target.value.trim()) {
+                const kode = e.target.value.trim();
+                const found = produkList.find((item) => item.barcode === kode);
+                if (found) {
+                  setDataPembelian((prev) => {
+                    const idx = prev.findIndex(
+                      (b) => b.id_produk === found.id_produk
+                    );
+                    if (idx !== -1) {
+                      return prev.map((b, i) =>
+                        i === idx ? { ...b, qty: Number(b.qty) + 1 } : b
+                      );
+                    }
+                    return [
+                      ...prev,
+                      {
+                        id_produk: found.id_produk,
+                        nama_produk: found.nama_produk,
+                        qty: 1,
+                        satuan: found.satuan,
+                        harga_jual: found.harga_jual,
+                      },
+                    ];
+                  });
+                } else {
+                  alert("Produk tidak ditemukan!");
+                }
+                e.target.value = "";
+              }
+            }}
+          />
         </div>
-        <div className="bg-white rounded-lg p-2 shadow-md">
+
+        {/*  Tabel pembelian */}
+        <div className="bg-white rounded-lg p-2 shadow-md border border-[#1E686D]">
           <div
             className="relative overflow-x-auto"
             style={{ maxHeight: "170px", overflowY: "auto" }}
@@ -231,26 +381,34 @@ const Kasir = () => {
             ) : (
               <table className="w-full text-sm text-left text-gray-500">
                 <tbody>
-                  {dataPembelian.map((item, idx) => (
-                    <tr key={idx} className="bg-gray-200">
-                      <td className="px-0.5 py-0.5">{item.nama_produk}</td>
+                  {dataPembelian.map((item, id_produk) => (
+                    <tr key={id_produk} className="bg-gray-200">
+                      <td className="px-0.5 py-0.5 capitalize">
+                        {item.nama_produk}
+                      </td>
                       <td className="px-0.5 py-0.5">
                         <input
                           type="number"
                           min={1}
                           value={item.qty}
                           onChange={(e) =>
-                            handlePembelianChange(idx, "qty", e.target.value)
+                            handlePembelianChange(
+                              id_produk,
+                              "qty",
+                              e.target.value
+                            )
                           }
                           className="w-16 border rounded px-1 py-0.5 text-center"
                         />
                       </td>
-                      <td className="px-0.5 py-0.5">{item.satuan}</td>
+                      <td className="px-0.5 py-0.5 capitalize">
+                        {item.satuan}
+                      </td>
                       <td className="px-0.5 py-0.5">Rp.{item.harga_jual}</td>
                       <td className="px-0.5 py-0.5">
                         <button
                           className="bg-white hover:bg-gray-300 text-black px-2 py-1 rounded text-xs"
-                          onClick={() => handleHapusPembelian(idx)}
+                          onClick={() => handleHapusPembelian(id_produk)}
                         >
                           Hapus
                         </button>
@@ -317,7 +475,7 @@ const Kasir = () => {
                   type="text"
                   inputMode="numeric"
                   min={0}
-                  value={bayar}
+                  value={`Rp. ${bayar.toLocaleString("id-ID")}`}
                   onChange={handleBayarChange}
                   className="text-sm text-end border rounded-lg px-2 w-40"
                 />
@@ -341,7 +499,7 @@ const Kasir = () => {
                     name="nama"
                     value={newItem.nama_pelanggan}
                     onChange={handleAddChange}
-                    className="border rounded-lg px-2 py-1 w-full pr-10"
+                    className="border rounded-lg px-2 py-1 w-full pr-10 capitalize"
                   />
                   <button
                     type="button"
@@ -349,7 +507,7 @@ const Kasir = () => {
                     title="Pilih dari daftar pelanggan"
                     onClick={openKontakModal}
                   >
-                    <MdContactPage size={18} />
+                    <MdContactPage size={25} />
                   </button>
                 </div>
               </div>
@@ -358,6 +516,7 @@ const Kasir = () => {
                 <button
                   className="bg-black text-sm text-white px-4 py-2 rounded-lg w-full md:w-auto transition duration-300 ease-in-out transform hover:bg-gray-800 hover:scale-105 hover:shadow-lg"
                   type="button"
+                  onClick={handleSubmitTransaksi}
                 >
                   Cetak Struk
                 </button>
@@ -409,16 +568,21 @@ const Kasir = () => {
                       className="flex flex-col md:flex-row md:items-center justify-between border rounded-lg px-4 py-3 shadow-sm bg-gray-50"
                     >
                       <div>
-                        <div className="font-semibold text-sm">
+                        <div className="font-semibold text-sm capitalize">
                           {item.nama_pelanggan}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {item.kontak || "Tidak ada kontak"}
                         </div>
                       </div>
                       <button
                         type="button"
-                        className="mt-2 md:mt-0 bg-[#1E686D] hover:bg-green-600 text-white px-4 py-1 rounded text-xs"
+                        className="mt-2 md:mt-0 bg-[#1E686D] hover:bg-green-600 text-white px-4 py-1 rounded-[20px] text-xs"
                         onClick={() => {
                           setNewItem((prev) => ({
                             ...prev,
+                            id_pelanggan: item.id_pelanggan,
+                            kontak: item.kontak || "",
                             nama_pelanggan: item.nama_pelanggan,
                           }));
                           setKontakModalOpen(false);
@@ -521,15 +685,23 @@ const Kasir = () => {
                     </thead>
                     <tbody>
                       {produkList.map((item, idx) => (
-                        <tr key={item.id} className="bg-white border-b">
+                        <tr key={item.id_produk} className="bg-white border-b">
                           <td className="px-2 py-1.5 text-center">{idx + 1}</td>
                           <td className="px-2 py-1.5 text-center">
                             {item.barcode}
                           </td>
-                          <td className="px-2 py-1.5">{item.nama_produk}</td>
-                          <td className="px-2 py-1.5">{item.kategori}</td>
-                          <td className="px-2 py-1.5">{item.satuan}</td>
-                          <td className="px-2 py-1.5">Rp.{item.harga_jual}</td>
+                          <td className="px-2 py-1.5 capitalize">
+                            {item.nama_produk}
+                          </td>
+                          <td className="px-2 py-1.5 capitalize">
+                            {item.kategori}
+                          </td>
+                          <td className="px-2 py-1.5 capitalize">
+                            {item.satuan}
+                          </td>
+                          <td className="px-2 py-1.5 capitalize">
+                            Rp.{item.harga_jual}
+                          </td>
                           <td className="px-2 py-1.5">
                             <button
                               onClick={() => {
@@ -555,6 +727,7 @@ const Kasir = () => {
                                   return [
                                     ...prev,
                                     {
+                                      id_produk: item.id_produk, // harus integer, bukan null
                                       nama_produk: item.nama_produk,
                                       qty: 1,
                                       satuan: item.satuan,
@@ -569,6 +742,96 @@ const Kasir = () => {
                               Pilih
                             </button>
                           </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Modal Lihat Data Mutasi */}
+        {lihatHistoryTransaksiOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold">Data Transaksi</h2>
+                <button
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={closeLihatHistoryTransaksi}
+                >
+                  <IoClose size={24} />
+                </button>
+              </div>
+              <div className="flex flex-col md:flex-row gap-2 mb-4">
+                <input
+                  type="date"
+                  name="tanggal_awal"
+                  value={filterHistoryTransaksi.tanggal_awal}
+                  onChange={handleFilterRiwayatTransaksiChange}
+                  className="border rounded px-2 py-1 text-xs"
+                  placeholder="Tanggal Awal"
+                />
+                <input
+                  type="date"
+                  name="tanggal_akhir"
+                  value={filterHistoryTransaksi.tanggal_akhir}
+                  onChange={handleFilterRiwayatTransaksiChange}
+                  className="border rounded px-2 py-1 text-xs"
+                  placeholder="Tanggal Akhir"
+                />
+
+                <select
+                  name="id_pelanggan"
+                  value={filterHistoryTransaksi.id_pelanggan}
+                  onChange={handleFilterRiwayatTransaksiChange}
+                  className="border rounded px-2 py-1 text-xs"
+                >
+                  <option value="">Pilih Pelanggan</option>
+                  {historyTransaksiList.map((pelanggan) => (
+                    <option
+                      key={pelanggan.id_pelanggan}
+                      value={pelanggan.id_pelanggan}
+                    >
+                      {pelanggan.nama_pelanggan || "Tidak ada nama"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div
+                className="relative overflow-x-auto"
+                style={{ maxHeight: "300px", overflowY: "auto" }}
+              >
+                {loadingHistoryTransaksi ? (
+                  <div className="text-center py-8">
+                    Memuat data transaksi...
+                  </div>
+                ) : dataHistoryTransaksi.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8">
+                    Tidak ada data transaksi
+                  </div>
+                ) : (
+                  <table className="w-full text-sm text-left text-gray-500">
+                    <thead>
+                      <tr>
+                        <th className="px-2 py-1">Tanggal</th>
+                        <th className="px-2 py-1">Nama Pelanggan</th>
+                        <th className="px-2 py-1">Lokasi</th>
+                        <th className="px-2 py-1">Total Belanja</th>
+                        {/* <th className="px-2 py-1">Lokasi Asal</th>
+                        <th className="px-2 py-1">Lokasi Tujuan</th> */}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dataHistoryTransaksi.map((item, idx) => (
+                        <tr key={idx} className="bg-gray-100">
+                          <td className="px-2 py-1">{item.tanggal}</td>
+                          <td className="px-2 py-1">{item.nama_pelanggan}</td>
+                          <td className="px-2 py-1">{item.nama_lokasi}</td>
+                          <td className="px-2 py-1">{item.total}</td>
+                          {/* <td className="px-2 py-1">{item.lokasi_asal}</td>
+                          <td className="px-2 py-1">{item.lokasi_tujuan}</td> */}
                         </tr>
                       ))}
                     </tbody>

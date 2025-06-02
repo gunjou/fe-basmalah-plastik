@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Kasir from "./pages/Kasir";
 import Stock from "./pages/Stock";
 import DaftarPelanggan from "./pages/DaftarPelanggan";
@@ -27,9 +32,13 @@ function App() {
         <Route
           path="/login"
           element={
-            <PublicLayout>
-              <Login />
-            </PublicLayout>
+            localStorage.getItem("token") ? (
+              <Navigate to="/kasir" />
+            ) : (
+              <PublicLayout>
+                <Login />
+              </PublicLayout>
+            )
           }
         />
 
@@ -37,11 +46,16 @@ function App() {
         <Route
           path="/kasir"
           element={
-            <DashboardLayout>
-              <Kasir />
-            </DashboardLayout>
+            localStorage.getItem("token") ? (
+              <DashboardLayout>
+                <Kasir />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
+
         <Route
           path="/stock"
           element={

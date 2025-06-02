@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
 function Login() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const togglePassword = () => setShowPassword((prev) => !prev);
 
@@ -18,10 +20,13 @@ function Login() {
     try {
       const res = await api.post("/auth/login", { username, password });
       const data = res.data;
-      console.log("Login response:", data); // Tambahkan ini
-      if (data && data.token) {
-        localStorage.setItem("token", data.token);
-        window.location.href = "/kasir";
+      if (data && data.access_token) {
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("username", username);
+        localStorage.setItem("role", data.role || "-");
+        console.log("res.data dari login:", res.data);
+
+        navigate("/kasir");
       } else {
         setErrorMsg(data.message || "Login gagal");
       }

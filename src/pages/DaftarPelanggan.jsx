@@ -46,7 +46,7 @@ const DaftarPelanggan = () => {
     e.preventDefault();
     try {
       await api.put(`/pelanggan/${editItem.id_pelanggan}`, {
-        nama: editItem.nama_pelanggan,
+        nama_pelanggan: editItem.nama_pelanggan,
         kontak: editItem.kontak,
       });
       // Refresh data dari backend
@@ -132,6 +132,20 @@ const DaftarPelanggan = () => {
     }
   };
 
+  // Tambahkan fungsi hapus di dalam komponen DaftarPelanggan
+  const handleDelete = async (item) => {
+    if (window.confirm(`Yakin ingin menghapus "${item.nama_pelanggan}"?`)) {
+      try {
+        await api.delete(`/pelanggan/${item.id_pelanggan}`);
+        // Refresh data dari backend
+        const res = await api.get("/pelanggan/");
+        setData(res.data);
+      } catch (err) {
+        alert("Gagal menghapus pelanggan.");
+      }
+    }
+  };
+
   return (
     <div className="">
       <h1 className="text-2xl font-bold pb-2">Pelanggan</h1>
@@ -204,7 +218,7 @@ const DaftarPelanggan = () => {
                     <SortIcon active={sortBy === "kontak"} asc={sortAsc} />
                   </div>
                 </th>
-                <th
+                {/* <th
                   className="px-1 py-2 cursor-pointer select-none"
                   onClick={() => handleSort("alamat")}
                 >
@@ -212,7 +226,7 @@ const DaftarPelanggan = () => {
                     Alamat
                     <SortIcon active={sortBy === "alamat"} asc={sortAsc} />
                   </div>
-                </th>
+                </th> */}
                 <th className="px-1 py-2">Action</th>
               </tr>
             </thead>
@@ -220,15 +234,23 @@ const DaftarPelanggan = () => {
               {sortedData.map((item, idx) => (
                 <tr key={idx} className="bg-white border-b">
                   <td className="px-1 py-1 text-center">{idx + 1}</td>
-                  <td className="px-1 py-1">{item.nama_pelanggan}</td>
+                  <td className="px-1 py-1 capitalize">
+                    {item.nama_pelanggan}
+                  </td>
                   <td className="px-1 py-1">{item.kontak}</td>
-                  <td className="px-1 py-1">{item.alamat}</td>
+                  {/* <td className="px-1 py-1">{item.alamat}</td> */}
                   <td className="px-1 py-1">
                     <button
-                      className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
+                      className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs"
                       onClick={() => openEditModal(item)}
                     >
                       Edit
+                    </button>
+                    <button
+                      className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-xs"
+                      onClick={() => handleDelete(item)}
+                    >
+                      Hapus
                     </button>
                   </td>
                 </tr>
@@ -272,7 +294,6 @@ const DaftarPelanggan = () => {
                   value={newItem.kontak}
                   onChange={handleAddChange}
                   className="border rounded px-2 py-1 w-full"
-                  required
                 />
               </div>
               {/* <div>

@@ -44,6 +44,14 @@ const Hutang = () => {
   const [sortBy, setSortBy] = useState("nama");
   const [sortAsc, setSortAsc] = useState(true);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+  };
+
   // State untuk data hutang dari API
   const [data, setData] = useState([]);
   const [hutangLoading, setHutangLoading] = useState(false);
@@ -54,7 +62,7 @@ const Hutang = () => {
     setHutangLoading(true);
     setHutangError(null);
     api
-      .get("/hutang/")
+      .get("/hutang/", { headers: getAuthHeaders() })
       .then((res) => setData(res.data || []))
       .catch(() => setHutangError("Gagal mengambil data hutang"))
       .finally(() => setHutangLoading(false));
@@ -90,11 +98,17 @@ const Hutang = () => {
     e.preventDefault();
     try {
       const id_hutang = selectedPelanggan?.id_pelanggan;
-      await api.post(`/hutang/${id_hutang}`, {
-        //nama_pelanggan: newItem.nama_pelanggan,
-        sisa_hutang: newItem.sisa_hutang,
-        status_hutang: newItem.status_hutang,
-      });
+      await api.post(
+        `/hutang/${id_hutang}`,
+        {
+          //nama_pelanggan: newItem.nama_pelanggan,
+          sisa_hutang: newItem.sisa_hutang,
+          status_hutang: newItem.status_hutang,
+        },
+        {
+          headers: getAuthHeaders(),
+        }
+      );
       setHutangLoading(true);
       const res = await api.get("/hutang/");
       setData(res.data || []);
@@ -163,7 +177,7 @@ const Hutang = () => {
       setPelangganLoading(true);
       setPelangganError(null);
       api
-        .get("/pelanggan/")
+        .get("/pelanggan/", { headers: getAuthHeaders() })
         .then((res) => setPelangganList(res.data || []))
         .catch(() => setPelangganError("Gagal mengambil data pelanggan"))
         .finally(() => setPelangganLoading(false));
@@ -225,6 +239,28 @@ const Hutang = () => {
       .includes(searchPelanggan.trim().toLowerCase())
   );
 
+  // Tambahkan sebelum return
+  const hutangByPelanggan = data.reduce((acc, item) => {
+    const id = item.id_pelanggan;
+    if (!acc[id]) {
+      acc[id] = {
+        id_pelanggan: id,
+        nama_pelanggan: item.nama_pelanggan,
+        sisa_hutang: 0,
+        status_hutang: item.status_hutang,
+      };
+    }
+    acc[id].sisa_hutang += Number(item.sisa_hutang) || 0;
+    // Jika ada status Lunas, tampilkan Lunas, jika tidak, tampilkan status terakhir
+    if (item.status_hutang === "Lunas") {
+      acc[id].status_hutang = "Lunas";
+    }
+    return acc;
+  }, {});
+
+  // Ubah ke array untuk mapping di tabel
+  const hutangList = Object.values(hutangByPelanggan);
+
   return (
     <div className="">
       <h1 className="text-2xl font-bold pb-2">Hutang</h1>
@@ -281,12 +317,12 @@ const Hutang = () => {
                   <th className="px-1 py-2 text-center">No</th>
                   <th
                     className="px-1 py-2 cursor-pointer select-none"
-                    onClick={() => handleSort("nama_pelanggan")}
+                    onClick={() => handleSort("id_pelanggan")}
                   >
                     <div className="flex items-center">
-                      Nama
+                      Id Pelanggan
                       <SortIcon
-                        active={sortBy === "nama_pelanggan"}
+                        active={sortBy === "id_pelanggan"}
                         asc={sortAsc}
                       />
                     </div>
@@ -319,14 +355,16 @@ const Hutang = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedData.map((item, idx) => (
+                {hutangList.map((item, idx) => (
                   <tr
                     key={item.id_pelanggan || idx}
                     className="bg-white border-b"
                   >
                     <td className="px-1 py-1 text-center">{idx + 1}</td>
                     <td className="px-1 py-1">{item.id_pelanggan}</td>
-                    <td className="px-1 py-1">Rp.{item.sisa_hutang}</td>
+                    <td className="px-1 py-1">
+                      Rp.{item.sisa_hutang.toLocaleString("id-ID")}
+                    </td>
                     <td className="px-1 py-1">
                       <span
                         className={

@@ -7,6 +7,14 @@ const Stock = () => {
   const [sortBy, setSortBy] = useState("nama_produk"); // Default sort by nama_produk
   const [sortAsc, setSortAsc] = useState(true);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+  };
+
   // State untuk data produk dari API
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,7 +25,7 @@ const Stock = () => {
     setLoading(true);
     setError(null);
     api
-      .get("/stok/")
+      .get("/stok/", { headers: getAuthHeaders() })
       .then((res) => setData(res.data.data))
       .catch(() => setError("Gagal mengambil data produk"))
       .finally(() => setLoading(false));
@@ -44,22 +52,35 @@ const Stock = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    // Cek barcode sudah ada
+    const barcodeExists = data.some((item) => item.barcode === newItem.barcode);
+    if (barcodeExists) {
+      alert("Barcode sudah terdaftar, gunakan barcode lain!");
+      return;
+    }
     try {
-      await api.put(`/stok/${editItem.id_stok}`, {
-        nama_produk: editItem.nama_produk,
-        barcode: editItem.barcode,
-        kategori: editItem.kategori,
-        satuan: editItem.satuan,
-        // id_kategori: categories.find(
-        //   (cat) => cat.nama === (editItem.kategori || editItem.kategori)
-        // )?.id,
-        // id_satuan: units.find(
-        //   (unit) => unit.nama === (editItem.satuan || editItem.satuan)
-        // )?.id,
-        harga_beli: Number(editItem.harga_beli),
-        harga_jual: Number(editItem.harga_jual),
-        jumlah_stock: Number(editItem.jumlah),
-      });
+      await api.put(
+        `/stok/${editItem.id_stok}`,
+        {
+          id_produk: editItem.id_produk, // Asumsi id_produk sudah ada di data
+          //id_produk: null, // Asumsi id_produk sudah ada di data
+          id_lokasi: 1, // Asumsi lokasi default adalah 1
+          nama_produk: editItem.nama_produk,
+          barcode: editItem.barcode,
+          kategori: editItem.kategori,
+          satuan: editItem.satuan,
+          // id_kategori: categories.find(
+          //   (cat) => cat.nama === (editItem.kategori || editItem.kategori)
+          // )?.id,
+          // id_satuan: units.find(
+          //   (unit) => unit.nama === (editItem.satuan || editItem.satuan)
+          // )?.id,
+          harga_beli: Number(editItem.harga_beli),
+          harga_jual: Number(editItem.harga_jual),
+          jumlah: Number(editItem.jumlah),
+        },
+        { headers: getAuthHeaders() }
+      );
       // Refresh data produk setelah edit
       const res = await api.get("/stok/");
       setData(res.data.data);
@@ -127,19 +148,28 @@ const Stock = () => {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    // Cek barcode sudah ada
+    const barcodeExists = data.some((item) => item.barcode === newItem.barcode);
+    if (barcodeExists) {
+      alert("Barcode sudah terdaftar, cek kembali produk Anda.");
+      return;
+    }
     try {
-      await api.post("/stok/", {
-        nama_produk: newItem.nama_produk,
-        barcode: newItem.barcode,
-        kategori: newItem.kategori,
-        satuan: newItem.satuan,
-        // id_kategori: categories.find((cat) => cat.nama === newItem.kategori)
-        //   ?.id,
-        // id_satuan: units.find((unit) => unit.nama === newItem.satuan)?.id,
-        harga_beli: newItem.harga_beli,
-        harga_jual: newItem.harga_jual,
-        jumlah: newItem.jumlah,
-      });
+      await api.post(
+        "/stok/",
+        {
+          id_produk: null, // ID produk akan di-generate oleh API
+          id_lokasi: 1, // Asumsi lokasi default adalah 1
+          nama_produk: newItem.nama_produk,
+          barcode: newItem.barcode,
+          kategori: newItem.kategori,
+          satuan: newItem.satuan,
+          harga_beli: Number(newItem.harga_beli),
+          harga_jual: Number(newItem.harga_jual),
+          jumlah: Number(newItem.jumlah),
+        },
+        { headers: getAuthHeaders() }
+      );
       // Refresh data produk setelah tambah
       const res = await api.get("/stok/");
       setData(res.data.data);
@@ -194,7 +224,7 @@ const Stock = () => {
   useEffect(() => {
     if (mutasiModalOpen) {
       api
-        .get("/lokasi/")
+        .get("/lokasi/", { headers: getAuthHeaders() })
         .then((res) => setLokasiList(res.data || []))
         .catch(() => setLokasiList([]));
     }
@@ -232,6 +262,7 @@ const Stock = () => {
         ...prev,
         {
           ...item,
+          id_produk: item.id_produk, // gunakan id_produk jika ada, jika tidak gunakan id_stok
           qty: 1, // default qty mutasi
         },
       ]);
@@ -254,8 +285,12 @@ const Stock = () => {
   // Fetch lokasi dan produk untuk filter saat modal dibuka
   useEffect(() => {
     if (lihatMutasiOpen) {
-      api.get("/lokasi/").then((res) => setLokasiList(res.data || []));
-      api.get("/stok/").then((res) => setProdukList(res.data.data || []));
+      api
+        .get("/lokasi/", { headers: getAuthHeaders() })
+        .then((res) => setLokasiList(res.data || []));
+      api
+        .get("/stok/", { headers: getAuthHeaders() })
+        .then((res) => setProdukList(res.data.data || []));
     }
   }, [lihatMutasiOpen]);
 
@@ -270,7 +305,8 @@ const Stock = () => {
     if (lihatMutasiOpen) {
       setLoadingMutasi(true);
       api
-        .get("/mutasi-stok", {
+        .get("/mutasi-stok/", {
+          headers: getAuthHeaders(),
           params: {
             tanggal_awal: filterMutasi.tanggal_awal,
             tanggal_akhir: filterMutasi.tanggal_akhir,
@@ -294,6 +330,72 @@ const Stock = () => {
 
   const openLihatMutasi = () => setLihatMutasiOpen(true);
   const closeLihatMutasi = () => setLihatMutasiOpen(false);
+
+  const handleMutasiSubmit = async (e) => {
+    e.preventDefault();
+    // Validasi minimal 1 item dan field wajib
+    if (
+      !mutasiForm.id_lokasi_asal ||
+      !mutasiForm.id_lokasi_tujuan ||
+      mutasiItems.length === 0 ||
+      mutasiItems.some(
+        (item) =>
+          item.id_produk === undefined ||
+          item.id_produk === null ||
+          item.qty === undefined ||
+          item.qty === null ||
+          item.keterangan === undefined ||
+          item.keterangan.trim() === ""
+      )
+    ) {
+      alert("Lengkapi semua data mutasi dan keterangan produk!");
+      return;
+    }
+
+    try {
+      const payload = mutasiItems.map((item) => ({
+        id_produk: Number(item.id_produk),
+        id_lokasi_asal: Number(mutasiForm.id_lokasi_asal),
+        id_lokasi_tujuan: Number(mutasiForm.id_lokasi_tujuan),
+        qty: Number(item.qty),
+        keterangan: item.keterangan,
+      }));
+
+      await api.post(
+        "/mutasi-stok/",
+        {
+          id_produk: Number(mutasiItems[0].id_produk),
+          id_lokasi_asal: Number(mutasiForm.id_lokasi_asal),
+          id_lokasi_tujuan: Number(mutasiForm.id_lokasi_tujuan),
+          qty: Number(mutasiItems[0].qty),
+          keterangan: mutasiItems[0].keterangan,
+        },
+        { headers: getAuthHeaders() }
+      );
+
+      setMutasiItems([]);
+      closeMutasiModal();
+      alert("Mutasi berhasil dikirim!");
+    } catch (err) {
+      alert("Gagal melakukan mutasi stok.");
+    }
+  };
+
+  // Tambahkan fungsi hapus di dalam komponen Stock
+  const handleDelete = async (item) => {
+    if (window.confirm(`Yakin ingin menghapus "${item.nama_produk}"?`)) {
+      try {
+        await api.delete(`/stok/${item.id_stok}`, {
+          headers: getAuthHeaders(),
+        });
+        // Refresh data setelah hapus
+        const res = await api.get("/stok/");
+        setData(res.data.data);
+      } catch (err) {
+        alert("Gagal menghapus barang.");
+      }
+    }
+  };
 
   return (
     <div className="">
@@ -399,14 +501,11 @@ const Stock = () => {
                   </th>
                   <th
                     className="px-1 py-2 cursor-pointer select-none"
-                    onClick={() => handleSort("jumlah_stock")}
+                    onClick={() => handleSort("jumlah")}
                   >
                     <div className="flex items-center">
                       Jumlah Stock
-                      <SortIcon
-                        active={sortBy === "jumlah_stock"}
-                        asc={sortAsc}
-                      />
+                      <SortIcon active={sortBy === "jumlah"} asc={sortAsc} />
                     </div>
                   </th>
                   <th className="px-1 py-2">Action</th>
@@ -417,9 +516,9 @@ const Stock = () => {
                   <tr key={item.id || idx} className="bg-white border-b">
                     <td className="px-1 py-1 text-center">{idx + 1}</td>
                     <td className="px-1 py-1">{item.barcode}</td>
-                    <td className="px-1 py-1">{item.nama_produk}</td>
-                    <td className="px-1 py-1">{item.kategori}</td>
-                    <td className="px-1 py-1">{item.satuan}</td>
+                    <td className="px-1 py-1 capitalize">{item.nama_produk}</td>
+                    <td className="px-1 py-1 capitalize">{item.kategori}</td>
+                    <td className="px-1 py-1 capitalize">{item.satuan}</td>
                     <td className="px-1 py-1">Rp.{item.harga_beli}</td>
                     <td className="px-1 py-1">Rp.{item.harga_jual}</td>
                     <td className="px-1 py-1">{item.jumlah}</td>
@@ -438,7 +537,7 @@ const Stock = () => {
                       </button>
                       <button
                         className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-xs"
-                        onClick={() => openEditModal(item)}
+                        onClick={() => handleDelete(item)}
                       >
                         Hapus
                       </button>
@@ -483,6 +582,7 @@ const Stock = () => {
                       <th className="px-0.5 py-0.5">Qty Mutasi</th>
                       <th className="px-0.5 py-0.5">Satuan</th>
                       <th className="px-0.5 py-0.5">Harga Jual</th>
+                      <th className="px-0.5 py-0.5">Keterangan</th>
                       <th className="px-0.5 py-0.5">Aksi</th>
                     </tr>
                   </thead>
@@ -503,6 +603,24 @@ const Stock = () => {
                         </td>
                         <td className="px-0.5 py-0.5">{item.satuan}</td>
                         <td className="px-0.5 py-0.5">Rp.{item.harga_jual}</td>
+                        <td className="px-0.5 py-0.5">
+                          <input
+                            type="text"
+                            value={item.keterangan || ""}
+                            onChange={(e) =>
+                              setMutasiItems((prev) =>
+                                prev.map((itm, i) =>
+                                  i === idx
+                                    ? { ...itm, keterangan: e.target.value }
+                                    : itm
+                                )
+                              )
+                            }
+                            className="w-32 border rounded px-1 py-0.5"
+                            placeholder="Keterangan"
+                            required
+                          />
+                        </td>
                         <td className="px-0.5 py-0.5">
                           <button
                             className="bg-white hover:bg-gray-300 text-black px-2 py-1 rounded text-xs"
@@ -700,7 +818,7 @@ const Stock = () => {
               <div>
                 <label className="block text-xs">Barcode</label>
                 <input
-                  type="number"
+                  type="text"
                   name="barcode"
                   value={editItem.barcode}
                   onChange={handleEditChange}
@@ -795,7 +913,7 @@ const Stock = () => {
                 <label className="block text-xs">Jumlah Stock</label>
                 <input
                   type="number"
-                  name="jumlah_stock"
+                  name="jumlah"
                   value={editItem.jumlah}
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
@@ -873,7 +991,7 @@ const Stock = () => {
                 <button
                   type="submit"
                   className="px-4 py-1 text-sm rounded-lg bg-[#1E686D] hover:bg-green-600 text-white"
-                  // onClick={handleMutasiSubmit}
+                  onClick={handleMutasiSubmit}
                 >
                   Simpan
                 </button>
@@ -947,7 +1065,7 @@ const Stock = () => {
               >
                 <option value="">Pilih Produk</option>
                 {produkList.map((produk) => (
-                  <option key={produk.id_stok} value={produk.id_stok}>
+                  <option key={produk.id_produk} value={produk.id_produk}>
                     {produk.nama_produk}
                   </option>
                 ))}
