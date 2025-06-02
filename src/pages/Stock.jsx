@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { CiCirclePlus } from "react-icons/ci";
 import { IoQrCodeOutline, IoClose } from "react-icons/io5";
 import api from "../utils/api";
@@ -396,13 +396,78 @@ const Stock = () => {
       }
     }
   };
+  const scanInputRef = useRef(null);
+
+  // Fokus otomatis ke input scan saat komponen dirender
+  useEffect(() => {
+    if (scanInputRef.current) {
+      scanInputRef.current.focus();
+    }
+  }, []);
+
+  // Tambahkan efek agar input barcode pada modal tambah otomatis terisi saat addModalOpen dan newItem.barcode berubah
+  useEffect(() => {
+    if (addModalOpen && newItem.barcode) {
+      // Fokus ke input barcode jika ada barcode hasil scan
+      const barcodeInput = document.querySelector('input[name="barcode"]');
+      if (barcodeInput) {
+        barcodeInput.focus();
+        barcodeInput.select();
+      }
+    }
+  }, [addModalOpen, newItem.barcode]);
+
+  // Tambahkan state dan fungsi search input di dalam komponen Stock
+  const [search, setSearch] = useState("");
+
+  // Fungsi untuk handle perubahan input search
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+  };
+
+  // Filter data produk berdasarkan search (nama_produk, barcode, kategori, satuan)
+  const filteredData = sortedData.filter(
+    (item) =>
+      (item.nama_produk &&
+        item.nama_produk.toLowerCase().includes(search.toLowerCase())) ||
+      (item.barcode &&
+        item.barcode.toLowerCase().includes(search.toLowerCase())) ||
+      (item.kategori &&
+        item.kategori.toLowerCase().includes(search.toLowerCase())) ||
+      (item.satuan && item.satuan.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <div className="">
       <h1 className="text-2xl font-bold pb-2">Stock</h1>
       <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
-        <div className="flex items-center justify-between space-x-2 mb-4">
+        <div className="flex items-center gap-4 mb-4">
           <p className="text-sm font-semibold">Daftar Stock Barang</p>
+          <input
+            ref={scanInputRef}
+            type="text"
+            placeholder="Scan/masukkan barcode produk"
+            className="border rounded-lg px-2 py-1 text-sm w-56 hover:border-[#1E686D] focus:outline-none focus:ring-2 focus:ring-[#1E686D]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.target.value.trim()) {
+                const barcode = e.target.value.trim();
+                const existing = data.find((item) => item.barcode === barcode);
+                if (existing) {
+                  // Jika barcode sudah ada, buka modal edit dan isi datanya
+                  setEditItem(existing);
+                  setModalOpen(true);
+                } else {
+                  // Jika barcode baru, buka modal tambah dan isi kolom barcode
+                  setNewItem((prev) => ({
+                    ...prev,
+                    barcode,
+                  }));
+                  setAddModalOpen(true);
+                }
+                e.target.value = "";
+              }
+            }}
+          />
           <form className="flex items-center gap-2">
             <label
               for="default-search"
@@ -434,6 +499,8 @@ const Stock = () => {
                 class="block w-50 p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-[15px] bg-gray-50 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="Cari barang..."
                 required
+                value={search}
+                onChange={handleSearchChange}
               />
             </div>
           </form>
@@ -512,38 +579,48 @@ const Stock = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedData.map((item, idx) => (
-                  <tr key={item.id || idx} className="bg-white border-b">
-                    <td className="px-1 py-1 text-center">{idx + 1}</td>
-                    <td className="px-1 py-1">{item.barcode}</td>
-                    <td className="px-1 py-1 capitalize">{item.nama_produk}</td>
-                    <td className="px-1 py-1 capitalize">{item.kategori}</td>
-                    <td className="px-1 py-1 capitalize">{item.satuan}</td>
-                    <td className="px-1 py-1">Rp.{item.harga_beli}</td>
-                    <td className="px-1 py-1">Rp.{item.harga_jual}</td>
-                    <td className="px-1 py-1">{item.jumlah}</td>
-                    <td className="px-1 py-1">
-                      <button
-                        className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs"
-                        onClick={() => handleAddToMutasi(item)}
-                      >
-                        Mutasi
-                      </button>
-                      <button
-                        className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs"
-                        onClick={() => openEditModal(item)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-xs"
-                        onClick={() => handleDelete(item)}
-                      >
-                        Hapus
-                      </button>
+                {filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="text-center text-gray-400 py-8">
+                      Data tidak ditemukan.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredData.map((item, idx) => (
+                    <tr key={item.id || idx} className="bg-white border-b">
+                      <td className="px-1 py-1 text-center">{idx + 1}</td>
+                      <td className="px-1 py-1">{item.barcode}</td>
+                      <td className="px-1 py-1 capitalize">
+                        {item.nama_produk}
+                      </td>
+                      <td className="px-1 py-1 capitalize">{item.kategori}</td>
+                      <td className="px-1 py-1 capitalize">{item.satuan}</td>
+                      <td className="px-1 py-1">Rp.{item.harga_beli}</td>
+                      <td className="px-1 py-1">Rp.{item.harga_jual}</td>
+                      <td className="px-1 py-1">{item.jumlah}</td>
+                      <td className="px-1 py-1">
+                        <button
+                          className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs"
+                          onClick={() => handleAddToMutasi(item)}
+                        >
+                          Mutasi
+                        </button>
+                        <button
+                          className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs"
+                          onClick={() => openEditModal(item)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-xs"
+                          onClick={() => handleDelete(item)}
+                        >
+                          Hapus
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           )}
@@ -557,14 +634,14 @@ const Stock = () => {
               Tambah Stock Barang
             </button>
             <button
-              className="bg-green-600 p-2 rounded-lg text-xs text-white hover:bg-green-700"
+              className="bg-green-400 p-2 rounded-lg text-xs text-white hover:bg-green-600"
               onClick={openLihatMutasi}
             >
               Lihat Data Mutasi
             </button>
           </div>
         </div>
-        <div className="bg-white rounded-lg p-2 shadow-md mt-4">
+        <div className="bg-white border border-[#1E686D] rounded-lg p-2 shadow-md mt-4">
           <div
             className="relative overflow-x-auto"
             style={{ maxHeight: "170px", overflowY: "auto" }}

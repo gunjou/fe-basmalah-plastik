@@ -66,6 +66,9 @@ const Hutang = () => {
       .then((res) => setData(res.data || []))
       .catch(() => setHutangError("Gagal mengambil data hutang"))
       .finally(() => setHutangLoading(false));
+    api
+      .get("/pelanggan/", { headers: getAuthHeaders() })
+      .then((res) => setData(res.data || []));
   }, []);
 
   const [addModalOpen, setAddModalOpen] = useState(false);

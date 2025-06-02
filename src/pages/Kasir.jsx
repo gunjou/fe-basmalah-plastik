@@ -94,6 +94,20 @@ const Kasir = () => {
     }
   }, [barangModalOpen]);
 
+  // --- Tambahkan useEffect untuk fetch produkList saat komponen mount ---
+  useEffect(() => {
+    // Jika produkList masih kosong, fetch data produk dari API
+    if (produkList.length === 0) {
+      setProdukLoading(true);
+      setProdukError(null);
+      api
+        .get("/stok/", { headers: getAuthHeaders() })
+        .then((res) => setProdukList(res.data.data))
+        .catch((err) => setProdukError("Gagal mengambil data produk"))
+        .finally(() => setProdukLoading(false));
+    }
+  }, []); // hanya dijalankan sekali saat mount
+
   // State untuk daftar pelanggan dari API
   const [pelangganList, setPelangganList] = useState([]);
   const [pelangganLoading, setPelangganLoading] = useState(false);
@@ -274,6 +288,16 @@ const Kasir = () => {
     }
   }, [lihatHistoryTransaksiOpen]);
 
+  // Tambahkan pengambilan data pelanggan untuk filter modal transaksi
+  useEffect(() => {
+    if (lihatHistoryTransaksiOpen) {
+      api
+        .get("/pelanggan/", { headers: getAuthHeaders() })
+        .then((res) => setHistoryTransaksiList(res.data || []))
+        .catch(() => setHistoryTransaksiList([]));
+    }
+  }, [lihatHistoryTransaksiOpen]);
+
   // Handler filter
   const handleFilterRiwayatTransaksiChange = (e) => {
     const { name, value } = e.target;
@@ -307,6 +331,23 @@ const Kasir = () => {
   const openLihatHistoryTransaksi = () => setLihatHistoryTransaksi(true);
   const closeLihatHistoryTransaksi = () => setLihatHistoryTransaksi(false);
 
+  // Tambahkan state dan fungsi search produk untuk modal daftar barang
+  const [searchProduk, setSearchProduk] = useState("");
+  const handleSearchProdukChange = (e) => setSearchProduk(e.target.value);
+
+  // Filter produkList berdasarkan searchProduk
+  const filteredProdukList = produkList.filter(
+    (item) =>
+      (item.nama_produk &&
+        item.nama_produk.toLowerCase().includes(searchProduk.toLowerCase())) ||
+      (item.barcode &&
+        item.barcode.toLowerCase().includes(searchProduk.toLowerCase())) ||
+      (item.kategori &&
+        item.kategori.toLowerCase().includes(searchProduk.toLowerCase())) ||
+      (item.satuan &&
+        item.satuan.toLowerCase().includes(searchProduk.toLowerCase()))
+  );
+
   return (
     <div className="">
       <h1 className="text-2xl font-bold pb-2">Kasir</h1>
@@ -323,10 +364,10 @@ const Kasir = () => {
             Lihat Daftar Produk
           </button>
           <button
-            className="bg-[#1E686D] p-2 rounded-lg text-xs text-white hover:bg-green-600"
+            className="bg-green-400 p-2 rounded-lg text-xs text-white hover:bg-green-600"
             onClick={() => openLihatHistoryTransaksi(true)}
           >
-            Lihat Daftar Produk
+            Lihat Daftar Transaksi
           </button>
           {/* Input scan barcode/QR */}
           <input
@@ -657,6 +698,8 @@ const Kasir = () => {
                     id="default-search"
                     className="block w-50 p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-[15px] bg-gray-50 focus:ring-green-500 focus:border-green-500"
                     placeholder="Cari barang..."
+                    value={searchProduk}
+                    onChange={handleSearchProdukChange}
                   />
                 </div>
               </form>
@@ -684,66 +727,82 @@ const Kasir = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {produkList.map((item, idx) => (
-                        <tr key={item.id_produk} className="bg-white border-b">
-                          <td className="px-2 py-1.5 text-center">{idx + 1}</td>
-                          <td className="px-2 py-1.5 text-center">
-                            {item.barcode}
-                          </td>
-                          <td className="px-2 py-1.5 capitalize">
-                            {item.nama_produk}
-                          </td>
-                          <td className="px-2 py-1.5 capitalize">
-                            {item.kategori}
-                          </td>
-                          <td className="px-2 py-1.5 capitalize">
-                            {item.satuan}
-                          </td>
-                          <td className="px-2 py-1.5 capitalize">
-                            Rp.{item.harga_jual}
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <button
-                              onClick={() => {
-                                setDataPembelian((prev) => {
-                                  // Cek apakah produk sudah ada di pembelian
-                                  const idx = prev.findIndex(
-                                    (b) =>
-                                      b.nama_produk === item.nama_produk &&
-                                      b.satuan === item.satuan
-                                  );
-                                  if (idx !== -1) {
-                                    // Jika sudah ada, tambahkan kuantitas
-                                    return prev.map((b, i) =>
-                                      i === idx
-                                        ? {
-                                            ...b,
-                                            qty: Number(b.qty) + 1,
-                                          }
-                                        : b
-                                    );
-                                  }
-                                  // Jika belum ada, tambahkan baru
-                                  return [
-                                    ...prev,
-                                    {
-                                      id_produk: item.id_produk, // harus integer, bukan null
-                                      nama_produk: item.nama_produk,
-                                      qty: 1,
-                                      satuan: item.satuan,
-                                      harga_jual: item.harga_jual,
-                                    },
-                                  ];
-                                });
-                                setBarangModalOpen(false);
-                              }}
-                              className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
-                            >
-                              Pilih
-                            </button>
+                      {filteredProdukList.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="text-center text-gray-400 py-8"
+                          >
+                            Data tidak ditemukan.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredProdukList.map((item, idx) => (
+                          <tr
+                            key={item.id_produk}
+                            className="bg-white border-b"
+                          >
+                            <td className="px-2 py-1.5 text-center">
+                              {idx + 1}
+                            </td>
+                            <td className="px-2 py-1.5 text-center">
+                              {item.barcode}
+                            </td>
+                            <td className="px-2 py-1.5 capitalize">
+                              {item.nama_produk}
+                            </td>
+                            <td className="px-2 py-1.5 capitalize">
+                              {item.kategori}
+                            </td>
+                            <td className="px-2 py-1.5 capitalize">
+                              {item.satuan}
+                            </td>
+                            <td className="px-2 py-1.5 capitalize">
+                              Rp.{item.harga_jual}
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <button
+                                onClick={() => {
+                                  setDataPembelian((prev) => {
+                                    // Cek apakah produk sudah ada di pembelian
+                                    const idx = prev.findIndex(
+                                      (b) =>
+                                        b.nama_produk === item.nama_produk &&
+                                        b.satuan === item.satuan
+                                    );
+                                    if (idx !== -1) {
+                                      // Jika sudah ada, tambahkan kuantitas
+                                      return prev.map((b, i) =>
+                                        i === idx
+                                          ? {
+                                              ...b,
+                                              qty: Number(b.qty) + 1,
+                                            }
+                                          : b
+                                      );
+                                    }
+                                    // Jika belum ada, tambahkan baru
+                                    return [
+                                      ...prev,
+                                      {
+                                        id_produk: item.id_produk, // harus integer, bukan null
+                                        nama_produk: item.nama_produk,
+                                        qty: 1,
+                                        satuan: item.satuan,
+                                        harga_jual: item.harga_jual,
+                                      },
+                                    ];
+                                  });
+                                  setBarangModalOpen(false);
+                                }}
+                                className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
+                              >
+                                Pilih
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 )}
@@ -819,6 +878,8 @@ const Kasir = () => {
                         <th className="px-2 py-1">Nama Pelanggan</th>
                         <th className="px-2 py-1">Lokasi</th>
                         <th className="px-2 py-1">Total Belanja</th>
+                        <th className="px-2 py-1">Status Hutang</th>
+
                         {/* <th className="px-2 py-1">Lokasi Asal</th>
                         <th className="px-2 py-1">Lokasi Tujuan</th> */}
                       </tr>
@@ -827,9 +888,19 @@ const Kasir = () => {
                       {dataHistoryTransaksi.map((item, idx) => (
                         <tr key={idx} className="bg-gray-100">
                           <td className="px-2 py-1">{item.tanggal}</td>
-                          <td className="px-2 py-1">{item.nama_pelanggan}</td>
-                          <td className="px-2 py-1">{item.nama_lokasi}</td>
-                          <td className="px-2 py-1">{item.total}</td>
+                          <td className="px-2 py-1 capitalize">
+                            {item.nama_pelanggan || "-"}
+                          </td>
+                          <td className="px-2 py-1 capitalize">
+                            {item.nama_lokasi}
+                          </td>
+
+                          <td className="px-2 py-1">{`Rp. ${item.total.toLocaleString(
+                            "id-ID"
+                          )}`}</td>
+                          <td className="px-2 py-1 capitalize">
+                            {item.status_hutang || "-"}
+                          </td>
                           {/* <td className="px-2 py-1">{item.lokasi_asal}</td>
                           <td className="px-2 py-1">{item.lokasi_tujuan}</td> */}
                         </tr>
