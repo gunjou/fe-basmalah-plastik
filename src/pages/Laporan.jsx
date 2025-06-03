@@ -1,40 +1,885 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { FaBoxOpen, FaClipboardList, FaShoppingCart } from "react-icons/fa";
 import api from "../utils/api";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 const Laporan = () => {
+  const [activeTab, setActiveTab] = useState("item");
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+  };
+
+  // State untuk data laporan
+  const [dataItem, setDataItem] = useState([]);
+  const [dataTransaksi, setDataTransaksi] = useState([]);
+  const [dataStok, setDataStok] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // State filter
+  const [lokasiList, setLokasiList] = useState([]);
+  const [produkList, setProdukList] = useState([]);
+  const [filterLokasi, setFilterLokasi] = useState("");
+  const [filterProduk, setFilterProduk] = useState("");
+
+  // Sorting
+  const [sortBy, setSortBy] = useState("nama_produk");
+  const [sortAsc, setSortAsc] = useState(true);
+
+  // Fetch data lokasi & produk untuk filter (sekali saja)
+  useEffect(() => {
+    api
+      .get("/lokasi/", { headers: getAuthHeaders() })
+      .then((res) => setLokasiList(res.data || []))
+      .catch(() => setLokasiList([]));
+    api
+      .get("/produk/", { headers: getAuthHeaders() })
+      .then((res) => setProdukList(res.data.data || []))
+      .catch(() => setProdukList([]));
+  }, []);
+
+  // Fetch data sesuai tab & filter
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    if (activeTab === "item") {
+      let params = {};
+      if (filterLokasi) params.id_lokasi = filterLokasi;
+      if (filterProduk) params.id_produk = filterProduk;
+      api
+        .get("/laporan/penjualan-item", { params, headers: getAuthHeaders() })
+        .then((res) => setDataItem(res.data.data))
+        .catch(() => setError("Gagal mengambil data"))
+        .finally(() => setLoading(false));
+    } else if (activeTab === "transaksi") {
+      api
+        .get("/laporan/transaksi", { headers: getAuthHeaders() })
+        .then((res) => setDataTransaksi(res.data.data))
+        .catch(() => setError("Gagal mengambil data"))
+        .finally(() => setLoading(false));
+    } else if (activeTab === "stok") {
+      api
+        .get("/laporan/stok", { headers: getAuthHeaders() })
+        .then((res) => setDataStok(res.data.data))
+        .catch(() => setError("Gagal mengambil data"))
+        .finally(() => setLoading(false));
+    }
+  }, [activeTab, filterLokasi, filterProduk]);
+
+  // Sorting function
+  const sortedData =
+    activeTab === "item"
+      ? [...dataItem].sort((a, b) => {
+          if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
+          if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
+          return 0;
+        })
+      : activeTab === "transaksi"
+      ? [...dataTransaksi].sort((a, b) => {
+          if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
+          if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
+          return 0;
+        })
+      : [...dataStok].sort((a, b) => {
+          if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
+          if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
+          return 0;
+        });
+
+  // Icon SVG
+  const SortIcon = ({ active, asc }) => (
+    <svg
+      className={`w-3 h-3 ms-1.5 inline ${
+        active ? "text-[#1E686D]" : "text-gray-400"
+      }`}
+      aria-hidden="true"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      style={{ transform: asc ? "rotate(0deg)" : "rotate(180deg)" }}
+    >
+      <path d="M8.574 11.024h6.852a2.075 2.075 0 0 0 1.847-1.086 1.9 1.9 0 0 0-.11-1.986L13.736 2.9a2.122 2.122 0 0 0-3.472 0L6.837 7.952a1.9 1.9 0 0 0-.11 1.986 2.074 2.074 0 0 0 1.847 1.086Zm6.852 1.952H8.574a2.072 2.072 0 0 0-1.847 1.087 1.9 1.9 0 0 0 .11 1.985l3.426 5.05a2.123 2.123 0 0 0 3.472 0l3.427-5.05a1.9 1.9 0 0 0 .11-1.985 2.074 2.074 0 0 0-1.846-1.087Z" />
+    </svg>
+  );
+
+  // Handler
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortBy(field);
+      setSortAsc(true);
+    }
+  };
+
+  // Fungsi unduh PDF
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF({ orientation: "landscape" });
+    if (typeof doc.autoTable !== "function") {
+      alert("jspdf-autotable belum terpasang dengan benar!");
+      return;
+    }
+    let title = "";
+    let columns = [];
+    let rows = [];
+
+    if (activeTab === "item") {
+      title = "Laporan Penjualan Item";
+      columns = [
+        { header: "No", dataKey: "no" },
+        { header: "Nama Produk", dataKey: "nama_produk" },
+        { header: "Total Qty", dataKey: "total_qty" },
+        { header: "Harga Beli", dataKey: "harga_beli" },
+        { header: "Harga Jual", dataKey: "harga_jual" },
+        { header: "SubTotal", dataKey: "subtotal" },
+        { header: "Modal", dataKey: "modal" },
+        { header: "Keuntungan", dataKey: "keuntungan" },
+      ];
+      rows = sortedData.map((item, idx) => ({
+        no: idx + 1,
+        nama_produk: item.nama_produk,
+        total_qty: item.total_qty,
+        harga_beli: `Rp. ${item.harga_beli?.toLocaleString("id-ID")}`,
+        harga_jual: `Rp. ${item.harga_jual?.toLocaleString("id-ID")}`,
+        subtotal: `Rp. ${item.subtotal?.toLocaleString("id-ID")}`,
+        modal: `Rp. ${item.modal?.toLocaleString("id-ID")}`,
+        keuntungan: `Rp. ${item.keuntungan?.toLocaleString("id-ID")}`,
+      }));
+    } else if (activeTab === "transaksi") {
+      title = "Laporan Transaksi Penjualan";
+      columns = [
+        { header: "No", dataKey: "no" },
+        { header: "Tanggal", dataKey: "tanggal" },
+        { header: "Nama Pelanggan", dataKey: "nama_pelanggan" },
+        { header: "Total", dataKey: "total" },
+        { header: "Status", dataKey: "status" },
+      ];
+      rows = sortedData.map((item, idx) => ({
+        no: idx + 1,
+        tanggal: item.tanggal,
+        nama_pelanggan: item.nama_pelanggan,
+        total: `Rp. ${item.total?.toLocaleString("id-ID")}`,
+        status: item.status,
+      }));
+    } else if (activeTab === "stok") {
+      title = "Laporan Stok Barang";
+      columns = [
+        { header: "No", dataKey: "no" },
+        { header: "Nama Produk", dataKey: "nama_produk" },
+        { header: "Stok", dataKey: "stok" },
+        { header: "Satuan", dataKey: "satuan" },
+      ];
+      rows = sortedData.map((item, idx) => ({
+        no: idx + 1,
+        nama_produk: item.nama_produk,
+        stok: item.stok,
+        satuan: item.satuan,
+      }));
+    }
+
+    doc.setFontSize(16);
+    doc.text(title, 14, 14);
+    doc.autoTable({
+      startY: 22,
+      columns,
+      body: rows,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [30, 104, 109] },
+      theme: "grid",
+    });
+    doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
+  };
+
   return (
     <div className="">
-      <h1 className="text-2xl font-bold mb-1">Laporan Penjualan</h1>
-      <p className="text-sm text-gray-500 mb-4">
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Eum, dicta.
-      </p>
-      <div className="rounded-[20px] mb-4 px-2 shadow-md bg-white w-full h-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pl-4 pt-4">
-          {/* Total Penjualan */}
-          <div className="md:col-span-2 flex flex-col justify-center">
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Rp 1.600.000.000
-            </h2>
-            <p className="text-gray-500">Total Penjualan</p>
-          </div>
-          {/* Keterangan Kanan */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">678</h3>
-              <p className="text-gray-500 text-sm">Transaksi</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">
-                Rp.3.000.000
-              </h3>
-              <p className="text-gray-500 text-sm">Total Hutang</p>
-            </div>
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">1.985</h3>
-              <p className="text-gray-500 text-sm">Produk Terjual</p>
-            </div>
+      <h1 className="text-2xl font-bold pb-2">Laporan</h1>
+      <div className="flex gap-6 mb-6">
+        {/* Card Laporan Item */}
+        <div
+          className={`flex-1 cursor-pointer rounded-xl shadow-md p-6 flex flex-col items-center transition border-2 ${
+            activeTab === "item"
+              ? "border-[#1E686D] bg-[#e6f6f7]"
+              : "border-gray-200 bg-white"
+          }`}
+          onClick={() => setActiveTab("item")}
+        >
+          <FaShoppingCart size={36} className="mb-2 text-[#1E686D]" />
+          <div className="font-semibold text-lg">Laporan Item</div>
+          <div className="text-xs text-gray-500 text-center">
+            Penjualan per produk
           </div>
         </div>
+        {/* Card Laporan Transaksi */}
+        <div
+          className={`flex-1 cursor-pointer rounded-xl shadow-md p-6 flex flex-col items-center transition border-2 ${
+            activeTab === "transaksi"
+              ? "border-[#1E686D] bg-[#e6f6f7]"
+              : "border-gray-200 bg-white"
+          }`}
+          onClick={() => setActiveTab("transaksi")}
+        >
+          <FaClipboardList size={36} className="mb-2 text-[#1E686D]" />
+          <div className="font-semibold text-lg">Laporan Transaksi</div>
+          <div className="text-xs text-gray-500 text-center">
+            Rekap transaksi penjualan
+          </div>
+        </div>
+        {/* Card Laporan Stok */}
+        <div
+          className={`flex-1 cursor-pointer rounded-xl shadow-md p-6 flex flex-col items-center transition border-2 ${
+            activeTab === "stok"
+              ? "border-[#1E686D] bg-[#e6f6f7]"
+              : "border-gray-200 bg-white"
+          }`}
+          onClick={() => setActiveTab("stok")}
+        >
+          <FaBoxOpen size={36} className="mb-2 text-[#1E686D]" />
+          <div className="font-semibold text-lg">Laporan Stok</div>
+          <div className="text-xs text-gray-500 text-center">
+            Stok barang terkini
+          </div>
+        </div>
+      </div>
+
+      {/* Tombol Unduh PDF */}
+      <div className="flex justify-end mb-2">
+        <button
+          className="bg-[#1E686D] hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+          onClick={handleDownloadPDF}
+        >
+          Unduh PDF
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
+        {activeTab === "item" && (
+          <div>
+            {/* Filter */}
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div>
+                <label className="block text-xs mb-1">Lokasi</label>
+                <select
+                  className="border rounded px-2 py-1 text-sm"
+                  value={filterLokasi}
+                  onChange={(e) => setFilterLokasi(e.target.value)}
+                >
+                  <option value="">Semua Lokasi</option>
+                  {lokasiList.map((lokasi) => (
+                    <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                      {lokasi.nama_lokasi}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Produk</label>
+                <select
+                  className="border rounded px-2 py-1 text-sm"
+                  value={filterProduk}
+                  onChange={(e) => setFilterProduk(e.target.value)}
+                >
+                  <option value="">Semua Produk</option>
+                  {produkList.map((produk) => (
+                    <option key={produk.id_produk} value={produk.id_produk}>
+                      {produk.nama_produk}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {/* Tabel Laporan Item */}
+            <div
+              className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
+              style={{ maxHeight: "300px", overflowY: "auto" }}
+            >
+              <table className="w-full text-sm text-left text-gray-500">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
+                  <tr>
+                    <th className="px-1 py-2 text-center">No</th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("nama_produk")}
+                    >
+                      <div className="flex items-center">
+                        Nama Produk
+                        <SortIcon
+                          active={sortBy === "nama_produk"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("total_qty")}
+                    >
+                      <div className="flex items-center">
+                        Total Qty
+                        <SortIcon
+                          active={sortBy === "total_qty"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("harga_beli")}
+                    >
+                      <div className="flex items-center">
+                        Harga Beli
+                        <SortIcon
+                          active={sortBy === "harga_beli"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("harga_jual")}
+                    >
+                      <div className="flex items-center">
+                        Harga Jual
+                        <SortIcon
+                          active={sortBy === "harga_jual"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("subtotal")}
+                    >
+                      <div className="flex items-center">
+                        SubTotal
+                        <SortIcon
+                          active={sortBy === "subtotal"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("modal")}
+                    >
+                      <div className="flex items-center">
+                        Modal
+                        <SortIcon active={sortBy === "modal"} asc={sortAsc} />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("keuntungan")}
+                    >
+                      <div className="flex items-center">
+                        Keuntungan
+                        <SortIcon
+                          active={sortBy === "keuntungan"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedData.map((item, idx) => (
+                    <tr key={idx} className="bg-white border-b">
+                      <td className="px-1 py-1 text-center">{idx + 1}</td>
+                      <td className="px-1 py-1 capitalize">
+                        {item.nama_produk}
+                      </td>
+                      <td className="px-1 py-1">{item.total_qty}</td>
+                      <td className="px-1 py-1">{`Rp. ${item.harga_beli?.toLocaleString(
+                        "id-ID"
+                      )}`}</td>
+                      <td className="px-1 py-1">{`Rp. ${item.harga_jual?.toLocaleString(
+                        "id-ID"
+                      )}`}</td>
+                      <td className="px-1 py-1">{`Rp. ${item.subtotal?.toLocaleString(
+                        "id-ID"
+                      )}`}</td>
+                      <td className="px-1 py-1">{`Rp. ${item.modal?.toLocaleString(
+                        "id-ID"
+                      )}`}</td>
+                      <td className="px-1 py-1">{`Rp. ${item.keuntungan?.toLocaleString(
+                        "id-ID"
+                      )}`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Total Keuntungan & Ringkasan */}
+            <div className="mt-3 flex justify-end">
+              <table className="w-auto text-sm text-left font-bold text-[#1E686D]">
+                <tbody>
+                  <tr>
+                    <td className="pr-4">Total Jenis Produk Terjual</td>
+                    <td>: </td>
+                    <td>
+                      {sortedData.length === 0 ? (
+                        <span className="text-red-600 font-bold">-</span>
+                      ) : (
+                        sortedData.length
+                      )}{" "}
+                      Produk
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Total Banyak Produk Terjual</td>
+                    <td>: </td>
+                    <td>
+                      {sortedData.reduce(
+                        (acc, item) => acc + (Number(item.total_qty) || 0),
+                        0
+                      ) === 0 ? (
+                        <span className="text-red-600 font-bold">-</span>
+                      ) : (
+                        sortedData.reduce(
+                          (acc, item) => acc + (Number(item.total_qty) || 0),
+                          0
+                        )
+                      )}{" "}
+                      Produk
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Total Keuntungan</td>
+                    <td>: </td>
+                    <td>
+                      {sortedData.reduce(
+                        (acc, item) => acc + (Number(item.keuntungan) || 0),
+                        0
+                      ) === 0 ? (
+                        <span className="text-red-600 font-bold">-</span>
+                      ) : (
+                        "Rp. " +
+                        sortedData
+                          .reduce(
+                            (acc, item) => acc + (Number(item.keuntungan) || 0),
+                            0
+                          )
+                          .toLocaleString("id-ID")
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {activeTab === "transaksi" && (
+          <div>
+            <div className="mb-2 font-semibold">
+              Laporan Transaksi Penjualan
+            </div>
+            <div
+              className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
+              style={{ maxHeight: "300px", overflowY: "auto" }}
+            >
+              <table className="w-full text-sm text-left text-gray-500">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
+                  <tr>
+                    <th className="px-1 py-2 text-center">No</th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("tanggal")}
+                    >
+                      <div className="flex items-center">
+                        Tanggal
+                        <SortIcon active={sortBy === "tanggal"} asc={sortAsc} />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("total")}
+                    >
+                      <div className="flex items-center">
+                        Total Belanja
+                        <SortIcon active={sortBy === "total"} asc={sortAsc} />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("tunai")}
+                    >
+                      <div className="flex items-center">
+                        Bayar
+                        <SortIcon active={sortBy === "tunai"} asc={sortAsc} />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("kembalian")}
+                    >
+                      <div className="flex items-center">
+                        Kembalian
+                        <SortIcon
+                          active={sortBy === "kembalian"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("sisa_hutang")}
+                    >
+                      <div className="flex items-center">
+                        Hutang
+                        <SortIcon
+                          active={sortBy === "sisa_hutang"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("modal")}
+                    >
+                      <div className="flex items-center">
+                        Modal
+                        <SortIcon active={sortBy === "modal"} asc={sortAsc} />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("keuntungan")}
+                    >
+                      <div className="flex items-center">
+                        Keuntungan
+                        <SortIcon
+                          active={sortBy === "keuntungan"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedData.map((item, idx) => (
+                    <tr key={idx} className="bg-white border-b">
+                      <td className="px-1 py-1 text-center">{idx + 1}</td>
+                      <td className="px-1 py-1">{item.tanggal}</td>
+                      <td className="px-1 py-1">
+                        {item.total === 0 ||
+                        item.total === "0" ||
+                        item.total === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.total).toLocaleString("id-ID")}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.tunai === 0 ||
+                        item.tunai === "0" ||
+                        item.tunai === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.tunai).toLocaleString("id-ID")}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.kembalian === 0 ||
+                        item.kembalian === "0" ||
+                        item.kembalian === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.kembalian).toLocaleString(
+                            "id-ID"
+                          )}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.sisa_hutang === 0 ||
+                        item.sisa_hutang === "0" ||
+                        item.sisa_hutang === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.sisa_hutang).toLocaleString(
+                            "id-ID"
+                          )}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.modal === 0 ||
+                        item.modal === "0" ||
+                        item.modal === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.modal).toLocaleString("id-ID")}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.keuntungan === 0 ||
+                        item.keuntungan === "0" ||
+                        item.keuntungan === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.keuntungan).toLocaleString(
+                            "id-ID"
+                          )}`
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Total Transaksi, Hutang, Keuntungan */}
+            <div className="mt-3 flex justify-end">
+              <table className="w-auto text-sm text-left font-bold text-[#1E686D]">
+                <tbody>
+                  <tr>
+                    <td className="pr-4">Total Transaksi</td>
+                    <td>:</td>
+                    <td>
+                      {"Rp. " +
+                        sortedData
+                          .reduce(
+                            (acc, item) => acc + (Number(item.total) || 0),
+                            0
+                          )
+                          .toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Total Hutang</td>
+                    <td>:</td>
+                    <td>
+                      {"Rp. " +
+                        sortedData
+                          .reduce(
+                            (acc, item) =>
+                              acc + (Number(item.sisa_hutang) || 0),
+                            0
+                          )
+                          .toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Total Keuntungan</td>
+                    <td>:</td>
+                    <td>
+                      {"Rp. " +
+                        sortedData
+                          .reduce(
+                            (acc, item) => acc + (Number(item.keuntungan) || 0),
+                            0
+                          )
+                          .toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {activeTab === "stok" && (
+          <div>
+            <div className="mb-2 font-semibold">Laporan Stok Barang</div>
+            <div
+              className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
+              style={{ maxHeight: "300px", overflowY: "auto" }}
+            >
+              <table className="w-full text-sm text-left text-gray-500">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
+                  <tr>
+                    <th className="px-1 py-2 text-center">No</th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("nama_lokasi")}
+                    >
+                      <div className="flex items-center">
+                        Nama Lokasi
+                        <SortIcon
+                          active={sortBy === "nama_lokasi"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("nama_produk")}
+                    >
+                      <div className="flex items-center">
+                        Nama Produk
+                        <SortIcon
+                          active={sortBy === "nama_produk"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("harga_beli")}
+                    >
+                      <div className="flex items-center">
+                        Harga Beli
+                        <SortIcon
+                          active={sortBy === "harga_beli"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("harga_jual")}
+                    >
+                      <div className="flex items-center">
+                        Harga Jual
+                        <SortIcon
+                          active={sortBy === "harga_jual"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("sisa_stok")}
+                    >
+                      <div className="flex items-center">
+                        Sisa Stok
+                        <SortIcon
+                          active={sortBy === "sisa_stok"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("nilai_modal")}
+                    >
+                      <div className="flex items-center">
+                        Nilai Modal
+                        <SortIcon
+                          active={sortBy === "nilai_modal"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("potensi_keuntungan")}
+                    >
+                      <div className="flex items-center">
+                        Potensi Keuntungan
+                        <SortIcon
+                          active={sortBy === "potensi_keuntungan"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedData.map((item, idx) => (
+                    <tr key={idx} className="bg-white border-b">
+                      <td className="px-1 py-1 text-center">{idx + 1}</td>
+                      <td className="px-1 py-1 capitalize">
+                        {item.nama_lokasi}
+                      </td>
+                      <td className="px-1 py-1">{item.nama_produk}</td>
+                      <td className="px-1 py-1">
+                        {item.harga_beli === 0 ||
+                        item.harga_beli === "0" ||
+                        item.harga_beli === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.harga_beli).toLocaleString(
+                            "id-ID"
+                          )}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.harga_jual === 0 ||
+                        item.harga_jual === "0" ||
+                        item.harga_jual === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.harga_jual).toLocaleString(
+                            "id-ID"
+                          )}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.sisa_stok === 0 ||
+                        item.sisa_stok === "0" ||
+                        item.sisa_stok === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          Number(item.sisa_stok).toLocaleString("id-ID")
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.nilai_modal === 0 ||
+                        item.nilai_modal === "0" ||
+                        item.nilai_modal === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.nilai_modal).toLocaleString(
+                            "id-ID"
+                          )}`
+                        )}
+                      </td>
+                      <td className="px-1 py-1">
+                        {item.potensi_keuntungan === 0 ||
+                        item.potensi_keuntungan === "0" ||
+                        item.potensi_keuntungan === null ? (
+                          <span className="text-red-600 font-bold">-</span>
+                        ) : (
+                          `Rp. ${Number(item.potensi_keuntungan).toLocaleString(
+                            "id-ID"
+                          )}`
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Total Modal & Potensi Keuntungan */}
+            <div className="mt-3 flex justify-end">
+              <table className="w-w-auto text-sm text-left font-bold text-[#1E686D]">
+                <tbody>
+                  <tr>
+                    <td className="pr-4">Total Modal</td>
+                    <td>:</td>
+                    <td>
+                      {"Rp. " +
+                        sortedData
+                          .reduce(
+                            (acc, item) =>
+                              acc + (Number(item.nilai_modal) || 0),
+                            0
+                          )
+                          .toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Total Potensi Keuntungan</td>
+                    <td>:</td>
+                    <td>
+                      {"Rp. " +
+                        sortedData
+                          .reduce(
+                            (acc, item) =>
+                              acc + (Number(item.potensi_keuntungan) || 0),
+                            0
+                          )
+                          .toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {loading && <div className="text-center py-8">Memuat data...</div>}
+        {error && <div className="text-center text-red-500 py-8">{error}</div>}
       </div>
     </div>
   );

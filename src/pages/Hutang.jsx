@@ -99,24 +99,38 @@ const Hutang = () => {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+
+    const id_pelanggan = newItem.id_pelanggan;
+
+    if (!id_pelanggan) {
+      alert("Pilih pelanggan terlebih dahulu!");
+      return;
+    }
+
+    const nominalBaru = Number(newItem.sisa_hutang);
+    const sisaLama = Number(selectedPelanggan?.sisa_hutang || 0);
+    const totalHutang = sisaLama + nominalBaru;
+
     try {
-      const id_hutang = selectedPelanggan?.id_pelanggan;
-      await api.post(
-        `/hutang/${id_hutang}`,
+      await api.put(
+        `/hutang/${id_pelanggan}`,
         {
-          //nama_pelanggan: newItem.nama_pelanggan,
-          sisa_hutang: newItem.sisa_hutang,
-          status_hutang: newItem.status_hutang,
+          nama_pelanggan: newItem.nama_pelanggan,
+          sisa_hutang: totalHutang,
+          status_hutang: "Belum Lunas",
         },
         {
           headers: getAuthHeaders(),
         }
       );
+
       setHutangLoading(true);
       const res = await api.get("/hutang/");
       setData(res.data || []);
       closeAddModal();
+      alert("Hutang berhasil ditambahkan");
     } catch (err) {
+      console.error("DETAIL ERROR:", err.response?.data || err.message);
       alert("Gagal menambah hutang");
       setHutangLoading(false);
     }
@@ -173,6 +187,8 @@ const Hutang = () => {
 
   // Modal Pilih Kontak
   const [kontakModalOpen, setKontakModalOpen] = useState(false);
+  const [tambahNamaPelanggan, setTambahNamaPelanggan] = useState("");
+  const [tambahKontakPelanggan, setTambahKontakPelanggan] = useState("");
 
   // Ambil data pelanggan saat modal dibuka
   useEffect(() => {
@@ -476,7 +492,8 @@ const Hutang = () => {
                   <div>
                     <label className="block text-xs">Jumlah Hutang</label>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
                       name="sisa_hutang"
                       value={newItem.sisa_hutang}
                       onChange={handleAddChange}
@@ -833,7 +850,10 @@ const Hutang = () => {
                         setNewItem((prev) => ({
                           ...prev,
                           nama_pelanggan: item.nama_pelanggan,
+                          id_pelanggan: item.id_pelanggan,
+                          sisa_hutang: item.sisa_hutang || 0,
                         }));
+                        setSelectedPelanggan(item);
                         setKontakModalOpen(false);
                       }}
                     >
@@ -858,6 +878,78 @@ const Hutang = () => {
                 Batal
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {tambahPelangganModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
+            <h2 className="text-lg font-bold mb-4">Tambah Pelanggan</h2>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await api.post(
+                    "/pelanggan/",
+                    {
+                      nama_pelanggan: tambahNamaPelanggan,
+                      kontak: tambahKontakPelanggan,
+                    },
+                    { headers: getAuthHeaders() }
+                  );
+                  setTambahPelangganModalOpen(false);
+                  setTambahNamaPelanggan("");
+                  setTambahKontakPelanggan("");
+                  // Refresh data pelanggan jika modal kontak terbuka
+                  if (kontakModalOpen) {
+                    setPelangganLoading(true);
+                    api
+                      .get("/pelanggan/", { headers: getAuthHeaders() })
+                      .then((res) => setPelangganList(res.data || []))
+                      .finally(() => setPelangganLoading(false));
+                  }
+                } catch (err) {
+                  alert("Gagal menambah pelanggan!");
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs mb-1">Nama Pelanggan</label>
+                <input
+                  type="text"
+                  className="border rounded px-2 py-1 w-full"
+                  required
+                  value={tambahNamaPelanggan}
+                  onChange={(e) => setTambahNamaPelanggan(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Kontak</label>
+                <input
+                  type="text"
+                  className="border rounded px-2 py-1 w-full"
+                  value={tambahKontakPelanggan}
+                  onChange={(e) => setTambahKontakPelanggan(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setTambahPelangganModalOpen(false)}
+                  className="text-sm px-4 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1 text-sm rounded-lg bg-[#1E686D] hover:bg-green-600 text-white"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

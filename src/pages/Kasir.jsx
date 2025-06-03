@@ -3,6 +3,7 @@ import api from "../utils/api";
 import { FaPlusCircle } from "react-icons/fa";
 import { IoQrCodeOutline, IoClose } from "react-icons/io5";
 import { MdContactPage } from "react-icons/md";
+import { useReactToPrint } from "react-to-print";
 
 // Helper untuk localStorage
 const getLS = (key, fallback) => {
@@ -132,6 +133,8 @@ const Kasir = () => {
   const [searchPelanggan, setSearchPelanggan] = useState("");
   const [tambahPelangganModalOpen, setTambahPelangganModalOpen] =
     useState(false);
+  const [tambahNamaPelanggan, setTambahNamaPelanggan] = useState("");
+  const [tambahKontakPelanggan, setTambahKontakPelanggan] = useState("");
 
   const openTambahPelangganModal = () => setTambahPelangganModalOpen(true);
 
@@ -208,6 +211,18 @@ const Kasir = () => {
   // const [idKasir, setIdKasir] = useState("");
   // const [idLokasi, setIdLokasi] = useState("");
 
+  // State untuk menyimpan data transaksi terakhir
+  const [lastTransaksi, setLastTransaksi] = useState(null);
+
+  // Ref untuk komponen struk
+  const strukRef = useRef();
+
+  // Handler cetak struk
+  const handlePrintStruk = useReactToPrint({
+    content: () => strukRef.current,
+    documentTitle: "Struk Transaksi",
+  });
+
   const handleSubmitTransaksi = async () => {
     // if (!idKasir || !idLokasi || dataPembelian.length === 0) {
     //   alert("ID Kasir, ID Lokasi, dan daftar pembelian wajib diisi.");
@@ -225,29 +240,41 @@ const Kasir = () => {
         tunai: Math.round(bayarNominal),
         kembalian: Math.max(0, Math.round(kembalian)),
         items: dataPembelian.map((item) => ({
-          id_produk: Number(item.id_produk), // pastikan integer dan tidak null
+          id_produk: Number(item.id_produk),
           qty: Number(item.qty),
           harga_jual: Number(item.harga_jual),
-          //harga_satuan: Number(item.harga_satuan ?? item.harga_jual), // fallback ke harga_jual jika harga_satuan tidak ada
         })),
       };
 
-      // Validasi agar tidak ada id_produk null/NaN
       if (payload.items.some((i) => !i.id_produk && i.id_produk !== 0)) {
         alert("Ada produk dengan ID tidak valid.");
         return;
       }
 
-      await api.post("/transaksi/", payload, {
+      // Simpan transaksi ke backend
+      const res = await api.post("/transaksi/", payload, {
         headers: getAuthHeaders(),
-        //withCredentials: true,
       });
 
       alert("Transaksi berhasil disimpan!");
+
+      // Simpan data transaksi terakhir untuk struk
+      setLastTransaksi({
+        ...payload,
+        tanggal: new Date().toLocaleString("id-ID"),
+        items: dataPembelian,
+        no_nota: res.data?.no_nota || "", // jika backend mengembalikan no_nota
+      });
+
       setDataPembelian([]);
       setBayar("");
       setBayarNominal(0);
       setDiskonValue("");
+
+      // Tunggu render struk, lalu cetak otomatis
+      setTimeout(() => {
+        handlePrintStruk();
+      }, 300);
     } catch (err) {
       console.error(err);
       alert(
@@ -894,12 +921,20 @@ const Kasir = () => {
                           <td className="px-2 py-1 capitalize">
                             {item.nama_lokasi}
                           </td>
-
                           <td className="px-2 py-1">{`Rp. ${item.total.toLocaleString(
                             "id-ID"
                           )}`}</td>
                           <td className="px-2 py-1 capitalize">
-                            {item.status_hutang || "-"}
+                            <span
+                              className={
+                                item.status_hutang === "-" ||
+                                !item.status_hutang
+                                  ? "text-green-600 font-semibold"
+                                  : "text-red-600 font-semibold"
+                              }
+                            >
+                              {item.status_hutang || "-"}
+                            </span>
                           </td>
                           {/* <td className="px-2 py-1">{item.lokasi_asal}</td>
                           <td className="px-2 py-1">{item.lokasi_tujuan}</td> */}
@@ -912,6 +947,172 @@ const Kasir = () => {
             </div>
           </div>
         )}
+
+        {/* Modal Tambah Pelanggan */}
+        {tambahPelangganModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
+              <h2 className="text-lg font-bold mb-4">Tambah Pelanggan</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await api.post(
+                      "/pelanggan/",
+                      {
+                        nama_pelanggan: tambahNamaPelanggan,
+                        kontak: tambahKontakPelanggan,
+                      },
+                      { headers: getAuthHeaders() }
+                    );
+                    setTambahPelangganModalOpen(false);
+                    setTambahNamaPelanggan("");
+                    setTambahKontakPelanggan("");
+                    // Refresh data pelanggan jika modal kontak terbuka
+                    if (kontakModalOpen) {
+                      setPelangganLoading(true);
+                      api
+                        .get("/pelanggan/", { headers: getAuthHeaders() })
+                        .then((res) => setPelangganList(res.data || []))
+                        .finally(() => setPelangganLoading(false));
+                    }
+                  } catch (err) {
+                    alert("Gagal menambah pelanggan!");
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-xs mb-1">Nama Pelanggan</label>
+                  <input
+                    type="text"
+                    className="border rounded px-2 py-1 w-full"
+                    required
+                    value={tambahNamaPelanggan}
+                    onChange={(e) => setTambahNamaPelanggan(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1">Kontak</label>
+                  <input
+                    type="text"
+                    className="border rounded px-2 py-1 w-full"
+                    value={tambahKontakPelanggan}
+                    onChange={(e) => setTambahKontakPelanggan(e.target.value)}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setTambahPelangganModalOpen(false)}
+                    className="text-sm px-4 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1 text-sm rounded-lg bg-[#1E686D] hover:bg-green-600 text-white"
+                  >
+                    Simpan
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Komponen Struk (hidden, hanya untuk print) */}
+      <div style={{ display: "none" }}>
+        <div ref={strukRef}>
+          {lastTransaksi && (
+            <div
+              style={{
+                width: 300,
+                fontFamily: "monospace",
+                fontSize: 13,
+                padding: 10,
+              }}
+            >
+              <div
+                style={{
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  marginBottom: 8,
+                }}
+              >
+                BASMALAH PLASTIK
+              </div>
+              <div style={{ textAlign: "center", marginBottom: 8 }}>
+                Jl. Contoh Alamat No. 123
+                <br />
+                Telp: 0812-3456-7890
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                Tanggal: {lastTransaksi.tanggal}
+                <br />
+                {lastTransaksi.no_nota && (
+                  <>
+                    No. Nota: {lastTransaksi.no_nota}
+                    <br />
+                  </>
+                )}
+                Kasir: 1
+              </div>
+              <table style={{ width: "100%", marginBottom: 8 }}>
+                <thead>
+                  <tr>
+                    <th align="left">Barang</th>
+                    <th align="right">Qty</th>
+                    <th align="right">Harga</th>
+                    <th align="right">Sub</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastTransaksi.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td>{item.nama_produk}</td>
+                      <td align="right">{item.qty}</td>
+                      <td align="right">
+                        {Number(item.harga_jual).toLocaleString("id-ID")}
+                      </td>
+                      <td align="right">
+                        {(item.qty * item.harga_jual).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div>
+                <div>
+                  <span>
+                    Total&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:
+                  </span>
+                  <span style={{ float: "right" }}>
+                    Rp. {lastTransaksi.total.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div>
+                  <span>
+                    Tunai&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:
+                  </span>
+                  <span style={{ float: "right" }}>
+                    Rp. {lastTransaksi.tunai.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div>
+                  <span>Kembalian&nbsp;&nbsp;:</span>
+                  <span style={{ float: "right" }}>
+                    Rp. {lastTransaksi.kembalian.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
+              <div style={{ textAlign: "center", marginTop: 12 }}>
+                --- Terima Kasih ---
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
