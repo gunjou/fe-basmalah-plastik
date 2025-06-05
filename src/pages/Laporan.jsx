@@ -3,8 +3,10 @@ import { FaBoxOpen, FaClipboardList, FaShoppingCart } from "react-icons/fa";
 import api from "../utils/api";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { useNavigate } from "react-router-dom";
 
 const Laporan = () => {
+  const navigate = useNavigate(); // tambahkan ini
   const [activeTab, setActiveTab] = useState("item");
 
   const getAuthHeaders = () => {
@@ -200,6 +202,14 @@ const Laporan = () => {
     });
     doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
   };
+
+  // Cek akses admin-only saat mount
+  useEffect(() => {
+    api.get("/auth/admin-only", { headers: getAuthHeaders() }).catch(() => {
+      alert("Akses hanya untuk admin!");
+      navigate("/kasir");
+    });
+  }, []);
 
   return (
     <div className="">

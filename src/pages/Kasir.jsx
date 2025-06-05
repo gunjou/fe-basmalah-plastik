@@ -242,6 +242,19 @@ const Kasir = () => {
   };
 
   const handleSubmitTransaksi = async () => {
+    // Cek jika tidak ada item yang dibeli
+    if (dataPembelian.length === 0) {
+      showAlert("error", "Tidak ada produk yang dibeli.");
+      return;
+    }
+    // Cek jika nominal bayar 0 atau kurang dari 0, harus input pelanggan
+    if (bayarNominal <= 0 || kembalian < 0) {
+      if (!newItem.nama_pelanggan || newItem.nama_pelanggan.trim() === "") {
+        showAlert("error", "Jika hutang pelanggan wajib diisi.");
+        return;
+      }
+    }
+
     try {
       const payload = {
         id_kasir: 1,
@@ -260,7 +273,7 @@ const Kasir = () => {
       };
 
       if (payload.items.some((i) => !i.id_produk && i.id_produk !== 0)) {
-        alert("Ada produk dengan ID tidak valid.");
+        showAlert("error", "Ada produk dengan ID tidak valid.");
         return;
       }
 

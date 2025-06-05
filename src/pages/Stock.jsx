@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { CiCirclePlus } from "react-icons/ci";
 import { IoQrCodeOutline, IoClose } from "react-icons/io5";
+import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
 const Stock = () => {
+  // ...existing code...
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+    if (role !== "admin") {
+      setReadOnly(true); // Set state readonly jika bukan admin
+    }
+  }, []);
+
+  const [readOnly, setReadOnly] = useState(false);
+
   const [sortBy, setSortBy] = useState("nama_produk"); // Default sort by nama_produk
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -605,24 +616,28 @@ const Stock = () => {
                       <td className="px-1 py-1">Rp.{item.harga_jual}</td>
                       <td className="px-1 py-1">{item.jumlah}</td>
                       <td className="px-1 py-1">
-                        <button
-                          className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-[10px] text-xs"
-                          onClick={() => handleAddToMutasi(item)}
-                        >
-                          Mutasi
-                        </button>
-                        <button
-                          className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-[10px] text-xs"
-                          onClick={() => openEditModal(item)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-[10px] text-xs"
-                          onClick={() => handleDelete(item)}
-                        >
-                          Hapus
-                        </button>
+                        {!readOnly && (
+                          <>
+                            <button
+                              className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-[10px] text-xs"
+                              onClick={() => handleAddToMutasi(item)}
+                            >
+                              Mutasi
+                            </button>
+                            <button
+                              className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-[10px] text-xs"
+                              onClick={() => openEditModal(item)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-[10px] text-xs"
+                              onClick={() => handleDelete(item)}
+                            >
+                              Hapus
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -633,18 +648,22 @@ const Stock = () => {
         </div>
         <div className="flex items-center justify-between mt-4">
           <div className="flex space-x-2">
-            <button
-              className="bg-[#1E686D] p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
-              onClick={openAddModal}
-            >
-              Tambah Stock Barang
-            </button>
-            <button
-              className="bg-green-400 p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
-              onClick={openLihatMutasi}
-            >
-              Lihat Data Mutasi
-            </button>
+            {!readOnly && (
+              <button
+                className="bg-[#1E686D] p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
+                onClick={openAddModal}
+              >
+                Tambah Stock Barang
+              </button>
+            )}
+            {!readOnly && (
+              <button
+                className="bg-green-400 p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
+                onClick={openLihatMutasi}
+              >
+                Lihat Data Mutasi
+              </button>
+            )}
           </div>
         </div>
         <div className="bg-white border border-[#1E686D] rounded-lg p-2 shadow-md mt-4">
@@ -731,7 +750,7 @@ const Stock = () => {
       </div>
 
       {/* Modal Tambah */}
-      {addModalOpen && (
+      {addModalOpen && !readOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <div className="flex items-center justify-between">
@@ -881,7 +900,7 @@ const Stock = () => {
       )}
 
       {/* Modal Edit */}
-      {modalOpen && (
+      {modalOpen && !readOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold">Edit Stock Barang</h2>
@@ -1024,7 +1043,7 @@ const Stock = () => {
       )}
 
       {/* Modal Mutasi Stock */}
-      {mutasiModalOpen && (
+      {mutasiModalOpen && !readOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold mb-4">Mutasi Stock</h2>

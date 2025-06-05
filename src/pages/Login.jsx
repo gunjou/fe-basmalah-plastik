@@ -24,9 +24,20 @@ function Login() {
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("username", username);
         localStorage.setItem("role", data.role || "-");
+        localStorage.setItem("id_lokasi", data.id_lokasi || "-");
+        localStorage.setItem("id_kasir", data.id_kasir || "-");
+        // Simpan info user (id_kasir, id_lokasi, dll) jika ada
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
         console.log("res.data dari login:", res.data);
 
-        navigate("/kasir");
+        // Redirect sesuai role
+        if (data.role === "admin") {
+          navigate("/kasir");
+        } else {
+          navigate("/kasir"); // kasir langsung ke halaman kasir
+        }
       } else {
         setErrorMsg(data.message || "Login gagal");
       }
