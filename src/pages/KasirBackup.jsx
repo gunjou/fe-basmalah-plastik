@@ -3,6 +3,7 @@ import api from "../utils/api";
 import { FaPlusCircle } from "react-icons/fa";
 import { IoQrCodeOutline, IoClose } from "react-icons/io5";
 import { MdContactPage } from "react-icons/md";
+import { useReactToPrint } from "react-to-print";
 
 // Helper untuk localStorage
 const getLS = (key, fallback) => {
@@ -26,34 +27,6 @@ const getAuthHeaders = () => {
 };
 
 const Kasir = () => {
-  const strukRef = useRef(null);
-  const handlePrintStruk = () => {
-    const printContents = strukRef.current.innerHTML;
-    const printWindow = window.open("", "", "width=300,height=600");
-    printWindow.document.write(`
-    <html>
-      <head>
-        <title>Struk Belanja</title>
-        <style>
-          body { font-family: Arial, sans-serif; font-size: 9px; margin: 0; padding: 0; }
-          .struk { max-width: 260px; margin: auto; padding: 4px; }
-          .struk-header { text-align: center; font-weight: bold; font-size: 11px; margin-bottom: 4px; }
-          .struk-table { width: 100%; border-collapse: collapse; }
-          .struk-table th, .struk-table td { text-align: left; padding: 2px 3px; font-size: 8px; }
-          .total-section { margin-top: 4px; border-top: 1px dashed #000; padding-top: 4px; font-size: 8px; }
-          .center { text-align: center; margin-top: 6px; }
-        </style>
-      </head>
-      <body onload="window.print(); window.close();">
-        <div class="struk">
-          ${printContents}
-        </div>
-      </body>
-    </html>
-  `);
-    printWindow.document.close();
-  };
-
   // Gunakan localStorage untuk data pembelian
   const [dataPembelian, setDataPembelian] = useState(() =>
     getLS("kasir_dataPembelian", [])
@@ -234,6 +207,21 @@ const Kasir = () => {
     setKontakModalOpen(false);
   };
 
+  // const [idKasir, setIdKasir] = useState("");
+  // const [idLokasi, setIdLokasi] = useState("");
+
+  // State untuk menyimpan data transaksi terakhir
+  const [lastTransaksi, setLastTransaksi] = useState(null);
+
+  // Ref untuk komponen struk
+  const strukRef = useRef();
+
+  // Handler cetak struk
+  const handlePrintStruk = useReactToPrint({
+    content: () => strukRef.current,
+    documentTitle: "Struk Transaksi",
+  });
+
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
 
   const showAlert = (type, message) => {
@@ -242,6 +230,11 @@ const Kasir = () => {
   };
 
   const handleSubmitTransaksi = async () => {
+    // if (!idKasir || !idLokasi || dataPembelian.length === 0) {
+    //   alert("ID Kasir, ID Lokasi, dan daftar pembelian wajib diisi.");
+    //   return;
+    // }
+
     try {
       const payload = {
         id_kasir: 1,
@@ -270,13 +263,26 @@ const Kasir = () => {
       });
 
       showAlert("success", "Transaksi berhasil disimpan!");
-      handlePrintStruk();
+
+      // Simpan data transaksi terakhir untuk struk
+      setLastTransaksi({
+        ...payload,
+        tanggal: new Date().toLocaleString("id-ID"),
+        items: dataPembelian,
+        no_nota: res.data?.no_nota || "", // jika backend mengembalikan no_nota
+      });
 
       setDataPembelian([]);
       setBayar("");
       setBayarNominal(0);
       setDiskonValue("");
-      setNewItem({ nama_pelanggan: "" });
+
+      // Tunggu render struk, lalu cetak otomatis
+      setTimeout(() => {
+        // window.print();
+        console.log(strukRef.current);
+        handlePrintStruk();
+      }, 300);
     } catch (err) {
       console.error(err);
       showAlert(
@@ -391,63 +397,6 @@ const Kasir = () => {
         </div>
       )}
       <h1 className="text-2xl font-bold pb-2">Kasir</h1>
-      <div ref={strukRef} style={{ display: "none" }}>
-        <div
-          style={{ textAlign: "center", fontWeight: "bold", fontSize: "11px" }}
-        >
-          BASMALAH PLASTIK
-        </div>
-        <div
-          style={{ textAlign: "center", fontSize: "9px", marginBottom: "4px" }}
-        >
-          Tanggal: {new Date().toLocaleString("id-ID")}
-        </div>
-        <table style={{ width: "100%", fontSize: "8px" }}>
-          <thead>
-            <tr>
-              <th align="left">Barang</th>
-              <th align="center">Qty</th>
-              <th align="right">Harga</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dataPembelian.map((item, idx) => (
-              <tr key={idx}>
-                <td>
-                  {item.nama_produk.length > 18
-                    ? item.nama_produk.slice(0, 18) + "…"
-                    : item.nama_produk}
-                </td>
-                <td align="center">{item.qty}</td>
-                <td align="right">
-                  Rp{Number(item.harga_jual).toLocaleString("id-ID")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <hr />
-        <div style={{ fontSize: "8px" }}>
-          <div>Subtotal: Rp{subtotal.toLocaleString("id-ID")}</div>
-          <div>Diskon: Rp{diskon.toLocaleString("id-ID")}</div>
-          <div>
-            <strong>Total: Rp{total.toLocaleString("id-ID")}</strong>
-          </div>
-          <div>Bayar: Rp{bayarNominal.toLocaleString("id-ID")}</div>
-          <div>Kembali: Rp{kembalian.toLocaleString("id-ID")}</div>
-          <div>Pelanggan: {newItem.nama_pelanggan || "-"}</div>
-        </div>
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "0px",
-            fontSize: "12px",
-          }}
-        >
-          --- Terima Kasih ---
-        </div>
-      </div>
-
       <div className="bg-white rounded-lg py-4 px-6 shadow-md">
         <div className="text-sm font-semibold">Pembelian</div>
         <div className="text-xs text-gray-500">
@@ -664,7 +613,7 @@ const Kasir = () => {
                   type="button"
                   onClick={handleSubmitTransaksi}
                 >
-                  Simpan Transaksi
+                  Cetak Struk
                 </button>
               </div>
             </div>
@@ -1100,6 +1049,99 @@ const Kasir = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Komponen Struk (hidden, hanya untuk print) */}
+      <div style={{ display: "none" }}>
+        <div ref={strukRef}>
+          {lastTransaksi && (
+            <div
+              style={{
+                width: 300,
+                fontFamily: "monospace",
+                fontSize: 13,
+                padding: 10,
+              }}
+            >
+              <div
+                style={{
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  marginBottom: 8,
+                }}
+              >
+                BASMALAH PLASTIK
+              </div>
+              <div style={{ textAlign: "center", marginBottom: 8 }}>
+                Jl. Contoh Alamat No. 123
+                <br />
+                Telp: 0812-3456-7890
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                Tanggal: {lastTransaksi.tanggal}
+                <br />
+                {lastTransaksi.no_nota && (
+                  <>
+                    No. Nota: {lastTransaksi.no_nota}
+                    <br />
+                  </>
+                )}
+                Kasir: 1
+              </div>
+              <table style={{ width: "100%", marginBottom: 8 }}>
+                <thead>
+                  <tr>
+                    <th align="left">Barang</th>
+                    <th align="right">Qty</th>
+                    <th align="right">Harga</th>
+                    <th align="right">Sub</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastTransaksi.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td>{item.nama_produk}</td>
+                      <td align="right">{item.qty}</td>
+                      <td align="right">
+                        {Number(item.harga_jual).toLocaleString("id-ID")}
+                      </td>
+                      <td align="right">
+                        {(item.qty * item.harga_jual).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div>
+                <div>
+                  <span>
+                    Total&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:
+                  </span>
+                  <span style={{ float: "right" }}>
+                    Rp. {lastTransaksi.total.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div>
+                  <span>
+                    Tunai&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:
+                  </span>
+                  <span style={{ float: "right" }}>
+                    Rp. {lastTransaksi.tunai.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div>
+                  <span>Kembalian&nbsp;&nbsp;:</span>
+                  <span style={{ float: "right" }}>
+                    Rp. {lastTransaksi.kembalian.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
+              <div style={{ textAlign: "center", marginTop: 12 }}>
+                --- Terima Kasih ---
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

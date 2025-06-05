@@ -33,7 +33,7 @@ const Tentang = () => {
             <FaWhatsapp size={25} />
           </a>
           <a
-            href="https://mail.google.com/mail/?view=cm&fs=1&to=gibrangl1167@gmail.com"
+            href="https://mail.google.com/mail/?view=cm&fs=1&to=outlookest2019@gmail.com"
             target="_blank"
             rel="noopener noreferrer"
             className="text-black hover:text-red-400"

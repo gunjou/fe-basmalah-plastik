@@ -99,8 +99,19 @@ const DaftarPelanggan = () => {
     }
   };
 
-  // Sorting function
-  const sortedData = [...data].sort((a, b) => {
+  const [search, setSearch] = useState("");
+
+  // Filter data berdasarkan search sebelum sorting
+  const filteredData = data.filter((item) => {
+    const q = search.trim().toLowerCase();
+    return (
+      item.nama_pelanggan?.toLowerCase().includes(q) ||
+      item.kontak?.toLowerCase().includes(q)
+    );
+  });
+
+  // Sorting function untuk filteredData
+  const sortedData = [...filteredData].sort((a, b) => {
     if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
     if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
     return 0;
@@ -152,17 +163,17 @@ const DaftarPelanggan = () => {
       <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
         <div className="flex items-center justify-between space-x-2 mb-4">
           <p className="text-sm font-semibold">Daftar Pelanggan</p>
-          <form class="flex items-center gap-2">
+          <form className="flex items-center gap-2">
             <label
-              for="default-search"
-              class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
+              htmlFor="default-search"
+              className="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
             >
               Search
             </label>
-            <div class="relative">
-              <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div className="relative">
+              <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                 <svg
-                  class="w-4 h-4 text-gray-500 dark:text-gray-400"
+                  className="w-4 h-4 text-gray-500 dark:text-gray-400"
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -170,9 +181,9 @@ const DaftarPelanggan = () => {
                 >
                   <path
                     stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
                     d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
                   />
                 </svg>
@@ -180,9 +191,10 @@ const DaftarPelanggan = () => {
               <input
                 type="search"
                 id="default-search"
-                class="block w-50 p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-[15px] bg-gray-50 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                className="block w-50 p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-[15px] bg-gray-50 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="Cari..."
-                required
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
           </form>
@@ -260,7 +272,7 @@ const DaftarPelanggan = () => {
         </div>
         <div className="flex items-center justify-between mt-4">
           <button
-            className="bg-[#1E686D] p-2 rounded-lg text-xs text-white hover:bg-green-600"
+            className="bg-[#1E686D] p-2 rounded-[10px] text-xs text-white font-semibold hover:bg-green-600"
             onClick={openAddModal}
           >
             Tambah Pelanggan

@@ -73,20 +73,25 @@ const Laporan = () => {
   }, [activeTab, filterLokasi, filterProduk]);
 
   // Sorting function
+  const filteredStok = dataStok.filter((item) => {
+    const matchLokasi = !filterLokasi || item.id_lokasi === filterLokasi;
+    const matchProduk = !filterProduk || item.id_produk === filterProduk;
+    return matchLokasi && matchProduk;
+  });
   const sortedData =
-    activeTab === "item"
+    activeTab === "stok"
+      ? [...filteredStok].sort((a, b) => {
+          if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
+          if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
+          return 0;
+        })
+      : activeTab === "item"
       ? [...dataItem].sort((a, b) => {
           if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
           if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
           return 0;
         })
-      : activeTab === "transaksi"
-      ? [...dataTransaksi].sort((a, b) => {
-          if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
-          if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
-          return 0;
-        })
-      : [...dataStok].sort((a, b) => {
+      : [...dataTransaksi].sort((a, b) => {
           if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
           if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
           return 0;
@@ -680,7 +685,40 @@ const Laporan = () => {
         )}
         {activeTab === "stok" && (
           <div>
-            <div className="mb-2 font-semibold">Laporan Stok Barang</div>
+            {/* Filter untuk Stok */}
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div>
+                <label className="block text-xs mb-1">Lokasi</label>
+                <select
+                  className="border rounded px-2 py-1 text-sm"
+                  value={filterLokasi}
+                  onChange={(e) => setFilterLokasi(e.target.value)}
+                >
+                  <option value="">Semua Lokasi</option>
+                  {lokasiList.map((lokasi) => (
+                    <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                      {lokasi.nama_lokasi}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Produk</label>
+                <select
+                  className="border rounded px-2 py-1 text-sm"
+                  value={filterProduk}
+                  onChange={(e) => setFilterProduk(e.target.value)}
+                >
+                  <option value="">Semua Produk</option>
+                  {produkList.map((produk) => (
+                    <option key={produk.id_produk} value={produk.id_produk}>
+                      {produk.nama_produk}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {/* Tabel Laporan Stok */}
             <div
               className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
               style={{ maxHeight: "300px", overflowY: "auto" }}

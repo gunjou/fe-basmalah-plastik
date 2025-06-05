@@ -443,31 +443,37 @@ const Stock = () => {
       <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
         <div className="flex items-center gap-4 mb-4">
           <p className="text-sm font-semibold">Daftar Stock Barang</p>
-          <input
-            ref={scanInputRef}
-            type="text"
-            placeholder="Scan/masukkan barcode produk"
-            className="border rounded-lg px-2 py-1 text-sm w-56 hover:border-[#1E686D] focus:outline-none focus:ring-2 focus:ring-[#1E686D]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && e.target.value.trim()) {
-                const barcode = e.target.value.trim();
-                const existing = data.find((item) => item.barcode === barcode);
-                if (existing) {
-                  // Jika barcode sudah ada, buka modal edit dan isi datanya
-                  setEditItem(existing);
-                  setModalOpen(true);
-                } else {
-                  // Jika barcode baru, buka modal tambah dan isi kolom barcode
-                  setNewItem((prev) => ({
-                    ...prev,
-                    barcode,
-                  }));
-                  setAddModalOpen(true);
+
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+              <IoQrCodeOutline size={20} className="text-[#1E686D]" />
+            </span>
+            <input
+              ref={scanInputRef}
+              type="text"
+              placeholder="Scan/masukkan barcode..."
+              className="border rounded-[10px] px-2 py-1.5 text-sm w-[210px] hover:border-[#1E686D] focus:outline-none focus:ring-2 focus:ring-[#1E686D] pl-8"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.target.value.trim()) {
+                  const barcode = e.target.value.trim();
+                  const existing = data.find(
+                    (item) => item.barcode === barcode
+                  );
+                  if (existing) {
+                    setEditItem(existing);
+                    setModalOpen(true);
+                  } else {
+                    setNewItem((prev) => ({
+                      ...prev,
+                      barcode,
+                    }));
+                    setAddModalOpen(true);
+                  }
+                  e.target.value = "";
                 }
-                e.target.value = "";
-              }
-            }}
-          />
+              }}
+            />
+          </div>
           <form className="flex items-center gap-2">
             <label
               for="default-search"
@@ -496,7 +502,7 @@ const Stock = () => {
               <input
                 type="search"
                 id="default-search"
-                class="block w-50 p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-[15px] bg-gray-50 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                class="block w-50 p-2 ps-10 text-sm text-gray-900 border border-[#1E686D] rounded-[15px] bg-gray-50 focus:ring-[#1E686D] focus:border-[#1E686D] dark:bg-[#1E686D] dark:border-[#1E686D] dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="Cari barang..."
                 required
                 value={search}
@@ -600,19 +606,19 @@ const Stock = () => {
                       <td className="px-1 py-1">{item.jumlah}</td>
                       <td className="px-1 py-1">
                         <button
-                          className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs"
+                          className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-[10px] text-xs"
                           onClick={() => handleAddToMutasi(item)}
                         >
                           Mutasi
                         </button>
                         <button
-                          className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs"
+                          className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-[10px] text-xs"
                           onClick={() => openEditModal(item)}
                         >
                           Edit
                         </button>
                         <button
-                          className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-xs"
+                          className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-[10px] text-xs"
                           onClick={() => handleDelete(item)}
                         >
                           Hapus
@@ -628,13 +634,13 @@ const Stock = () => {
         <div className="flex items-center justify-between mt-4">
           <div className="flex space-x-2">
             <button
-              className="bg-[#1E686D] p-2 rounded-lg text-xs text-white hover:bg-green-600"
+              className="bg-[#1E686D] p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
               onClick={openAddModal}
             >
               Tambah Stock Barang
             </button>
             <button
-              className="bg-green-400 p-2 rounded-lg text-xs text-white hover:bg-green-600"
+              className="bg-green-400 p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
               onClick={openLihatMutasi}
             >
               Lihat Data Mutasi
@@ -858,13 +864,13 @@ const Stock = () => {
                 <button
                   type="button"
                   onClick={closeAddModal}
-                  className="text-sm px-4 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  className="text-sm px-4 py-1 rounded-[10px] bg-gray-200 hover:bg-gray-300 text-gray-700"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1 text-sm rounded-lg bg-[#1E686D] hover:bg-green-600 text-white"
+                  className="px-4 py-1 text-sm rounded-[10px] bg-[#1E686D] hover:bg-green-600 text-white"
                 >
                   Simpan
                 </button>
@@ -1001,13 +1007,13 @@ const Stock = () => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-1 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  className="px-4 py-1 text-sm rounded-[10px] bg-gray-200 hover:bg-gray-300 text-gray-700"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1 text-sm rounded-lg bg-[#1E686D] hover:bg-green-600 text-white"
+                  className="px-4 py-1 text-sm rounded-[10px] bg-[#1E686D] hover:bg-green-600 text-white"
                 >
                   Simpan
                 </button>
@@ -1061,13 +1067,13 @@ const Stock = () => {
                 <button
                   type="button"
                   onClick={closeMutasiModal}
-                  className="text-sm px-4 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  className="text-sm px-4 py-1 rounded-[10px] bg-gray-200 hover:bg-gray-300 text-gray-700"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1 text-sm rounded-lg bg-[#1E686D] hover:bg-green-600 text-white"
+                  className="px-4 py-1 text-sm rounded-[10px] bg-[#1E686D] hover:bg-green-600 text-white"
                   onClick={handleMutasiSubmit}
                 >
                   Simpan
