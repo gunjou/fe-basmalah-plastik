@@ -310,6 +310,8 @@ const Kasir = () => {
   }, []);
 
   const [lokasiList, setLokasiList] = useState([]);
+  const [filterLokasi, setFilterLokasi] = useState("");
+
   // State untuk modal lihat data mutasi
   const [lihatHistoryTransaksiOpen, setLihatHistoryTransaksi] = useState(false);
   const [filterHistoryTransaksi, setFilterHistoryTransaksi] = useState({
@@ -321,6 +323,15 @@ const Kasir = () => {
   const [dataHistoryTransaksi, setDataHistoryTransaksi] = useState([]);
   const [loadingHistoryTransaksi, setLoadingHistoryTransaksi] = useState(false);
   const [historyTransaksiList, setHistoryTransaksiList] = useState([]);
+
+  useEffect(() => {
+    if (barangModalOpen) {
+      api
+        .get("/lokasi/", { headers: getAuthHeaders() })
+        .then((res) => setLokasiList(res.data || []))
+        .catch(() => setLokasiList([]));
+    }
+  }, [barangModalOpen]);
 
   // Fetch lokasi dan produk untuk filter saat modal dibuka
   useEffect(() => {
@@ -379,17 +390,15 @@ const Kasir = () => {
   const handleSearchProdukChange = (e) => setSearchProduk(e.target.value);
 
   // Filter produkList berdasarkan searchProduk
-  const filteredProdukList = produkList.filter(
-    (item) =>
-      (item.nama_produk &&
-        item.nama_produk.toLowerCase().includes(searchProduk.toLowerCase())) ||
-      (item.barcode &&
-        item.barcode.toLowerCase().includes(searchProduk.toLowerCase())) ||
-      (item.kategori &&
-        item.kategori.toLowerCase().includes(searchProduk.toLowerCase())) ||
-      (item.satuan &&
-        item.satuan.toLowerCase().includes(searchProduk.toLowerCase()))
-  );
+  const filteredProdukList = produkList.filter((item) => {
+    const cocokCari =
+      item.nama_produk?.toLowerCase().includes(searchProduk.toLowerCase()) ||
+      item.barcode?.toLowerCase().includes(searchProduk.toLowerCase()) ||
+      item.kategori?.toLowerCase().includes(searchProduk.toLowerCase()) ||
+      item.satuan?.toLowerCase().includes(searchProduk.toLowerCase());
+    const cocokLokasi = filterLokasi ? item.id_lokasi == filterLokasi : true;
+    return cocokCari && cocokLokasi;
+  });
 
   return (
     <div className="">
@@ -787,6 +796,18 @@ const Kasir = () => {
               </div>
 
               <form className="flex items-center gap-2 mb-4">
+                <select
+                  value={filterLokasi}
+                  onChange={(e) => setFilterLokasi(e.target.value)}
+                  className="border rounded-lg px-2 py-1 text-sm"
+                >
+                  <option value="">Semua Lokasi</option>
+                  {lokasiList.map((lokasi) => (
+                    <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                      {lokasi.nama_lokasi}
+                    </option>
+                  ))}
+                </select>
                 <label
                   htmlFor="default-search"
                   className="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
