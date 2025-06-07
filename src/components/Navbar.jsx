@@ -23,11 +23,8 @@ const Navbar = ({ isSidebarOpen }) => {
           },
         }
       );
-      // After logging out, clear localStorage and navigate to login
-      localStorage.removeItem("token");
-      localStorage.removeItem("username");
-      localStorage.removeItem("role");
-      navigate("/login");
+      localStorage.clear();
+      window.location.href = "/login"; // Full reload untuk reset state
     } catch (err) {
       console.error("Logout failed:", err);
       alert("Logout failed. Please try again.");

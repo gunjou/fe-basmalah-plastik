@@ -34,9 +34,9 @@ function Login() {
 
         // Redirect sesuai role
         if (data.role === "admin") {
-          navigate("/kasir");
+          navigate("/stock", { replace: true });
         } else {
-          navigate("/kasir"); // kasir langsung ke halaman kasir
+          navigate("/kasir", { replace: true }); // kasir langsung ke halaman kasir
         }
       } else {
         setErrorMsg(data.message || "Login gagal");

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
+
 import Kasir from "./pages/Kasir";
 import Stock from "./pages/Stock";
 import DaftarPelanggan from "./pages/DaftarPelanggan";
@@ -15,25 +16,28 @@ import Tentang from "./pages/Tentang";
 
 import DashboardLayout from "./layouts/DashboardLayout";
 import PublicLayout from "./layouts/PublicLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
   return (
     <Router>
       <Routes>
-        {/* /login sebagai halaman awal */}
-        <Route
-          path="/"
-          element={
-            <PublicLayout>
-              <Login />
-            </PublicLayout>
-          }
-        />
+        {/* Halaman root "/" diarahkan ke login */}
+        <Route path="/" element={<Navigate to="/login" />} />
+
+        {/* Login route */}
         <Route
           path="/login"
           element={
-            localStorage.getItem("token") ? (
-              <Navigate to="/kasir" />
+            token ? (
+              role === "admin" ? (
+                <Navigate to="/stock" />
+              ) : (
+                <Navigate to="/kasir" />
+              )
             ) : (
               <PublicLayout>
                 <Login />
@@ -42,58 +46,70 @@ function App() {
           }
         />
 
-        {/* Protected routes (dengan sidebar & navbar) */}
+        {/* Protected Routes */}
         <Route
           path="/kasir"
           element={
-            localStorage.getItem("token") ? (
+            <ProtectedRoute allowedRoles={["kasir"]}>
               <DashboardLayout>
                 <Kasir />
               </DashboardLayout>
-            ) : (
-              <Navigate to="/login" />
-            )
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/stock"
           element={
-            <DashboardLayout>
-              <Stock />
-            </DashboardLayout>
+            <ProtectedRoute allowedRoles={["admin", "kasir"]}>
+              <DashboardLayout>
+                <Stock />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
+
         <Route
           path="/pelanggan"
           element={
-            <DashboardLayout>
-              <DaftarPelanggan />
-            </DashboardLayout>
+            <ProtectedRoute allowedRoles={["admin", "kasir"]}>
+              <DashboardLayout>
+                <DaftarPelanggan />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
+
         <Route
           path="/hutang"
           element={
-            <DashboardLayout>
-              <Hutang />
-            </DashboardLayout>
+            <ProtectedRoute allowedRoles={["admin", "kasir"]}>
+              <DashboardLayout>
+                <Hutang />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
+
         <Route
           path="/laporan"
           element={
-            <DashboardLayout>
-              <Laporan />
-            </DashboardLayout>
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <DashboardLayout>
+                <Laporan />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
+
         <Route
           path="/tentang"
           element={
-            <DashboardLayout>
-              <Tentang />
-            </DashboardLayout>
+            <ProtectedRoute allowedRoles={["admin", "kasir"]}>
+              <DashboardLayout>
+                <Tentang />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
       </Routes>
