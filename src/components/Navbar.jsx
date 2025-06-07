@@ -23,11 +23,15 @@ const Navbar = ({ isSidebarOpen }) => {
           },
         }
       );
+      // After logging out, clear localStorage and navigate to login
+      localStorage.removeItem("token");
+      localStorage.removeItem("username");
+      localStorage.removeItem("role");
+      navigate("/login");
     } catch (err) {
       console.error("Logout failed:", err);
+      alert("Logout failed. Please try again.");
     }
-    localStorage.removeItem("token");
-    navigate("/login");
   };
 
   return (
@@ -56,8 +60,8 @@ const Navbar = ({ isSidebarOpen }) => {
           onClick={() => {
             const confirmLogout = window.confirm("Anda yakin ingin logout?");
             if (confirmLogout) {
-              localStorage.clear();
-              navigate("/login");
+              console.log("User confirmed logout");
+              handleLogout(); // Call handleLogout when confirmed
             }
           }}
         >

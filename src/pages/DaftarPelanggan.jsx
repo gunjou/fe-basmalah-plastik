@@ -4,6 +4,13 @@ import { IoQrCodeOutline } from "react-icons/io5";
 import api from "../utils/api";
 
 const DaftarPelanggan = () => {
+  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
+
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    setTimeout(() => setAlert({ show: false, type: "", message: "" }), 2000);
+  };
+
   const [sortBy, setSortBy] = useState("nama_pelanggan");
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -53,8 +60,12 @@ const DaftarPelanggan = () => {
       const res = await api.get("/pelanggan/");
       setData(res.data);
       closeModal();
+      showAlert("success", "Pelanggan berhasil diedit");
     } catch (err) {
-      alert("Gagal mengedit pelanggan. Pastikan data sudah benar.");
+      showAlert(
+        "error",
+        "Gagal mengedit pelanggan. Pastikan data sudah benar."
+      );
     }
   };
 
@@ -94,8 +105,12 @@ const DaftarPelanggan = () => {
       const res = await api.get("/pelanggan/");
       setData(res.data);
       closeAddModal();
+      showAlert("success", "Pelanggan berhasil ditambahkan");
     } catch (err) {
-      alert("Gagal menambah pelanggan. Pastikan data sudah benar.");
+      showAlert(
+        "error",
+        "Gagal menambahkan pelanggan. Pastikan data sudah benar."
+      );
     }
   };
 
@@ -159,6 +174,16 @@ const DaftarPelanggan = () => {
 
   return (
     <div className="">
+      {alert.show && (
+        <div
+          className={`fixed top-4 left-1/2 z-[9999] -translate-x-1/2 px-6 py-3 rounded shadow-lg text-white text-sm font-semibold ${
+            alert.type === "success" ? "bg-green-600" : "bg-red-600"
+          }`}
+          style={{ minWidth: 220, textAlign: "center" }}
+        >
+          {alert.message}
+        </div>
+      )}
       <h1 className="text-2xl font-bold pb-2">Pelanggan</h1>
       <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
         <div className="flex items-center justify-between space-x-2 mb-4">
@@ -249,7 +274,7 @@ const DaftarPelanggan = () => {
                   <td className="px-1 py-1 capitalize">
                     {item.nama_pelanggan}
                   </td>
-                  <td className="px-1 py-1">{item.kontak}</td>
+                  <td className="px-1 py-1">{item.kontak || "-"}</td>
                   {/* <td className="px-1 py-1">{item.alamat}</td> */}
                   <td className="px-1 py-1">
                     <button

@@ -26,31 +26,134 @@ const getAuthHeaders = () => {
 };
 
 const Kasir = () => {
+  const getUserRole = () => localStorage.getItem("role"); // "admin" atau "kasir"
+  const getUserLokasi = () => localStorage.getItem("id_lokasi");
+
+  //const [lokasiList, setLokasiList] = useState([]);
+  const [selectedLokasi, setSelectedLokasi] = useState(getUserLokasi());
+  const userRole = getUserRole();
+
+  useEffect(() => {
+    if (userRole === "admin") {
+      api
+        .get("/lokasi/", { headers: getAuthHeaders() })
+        .then((res) => setLokasiList(res.data || []));
+    }
+  }, [userRole]);
+
   const strukRef = useRef(null);
   const handlePrintStruk = () => {
     const printContents = strukRef.current.innerHTML;
     const printWindow = window.open("", "", "width=300,height=600");
+    const logoBase64 = "images/icon-outlook.svg"; // base64 logo
+    const nomorTransaksi = "TRX-" + Date.now();
+    const tanggalStr = new Date().toLocaleString("id-ID");
+
     printWindow.document.write(`
-    <html>
-      <head>
-        <title>Struk Belanja</title>
-        <style>
-          body { font-family: Arial, sans-serif; font-size: 9px; margin: 0; padding: 0; }
-          .struk { max-width: 260px; margin: auto; padding: 4px; }
-          .struk-header { text-align: center; font-weight: bold; font-size: 11px; margin-bottom: 4px; }
-          .struk-table { width: 100%; border-collapse: collapse; }
-          .struk-table th, .struk-table td { text-align: left; padding: 2px 3px; font-size: 8px; }
-          .total-section { margin-top: 4px; border-top: 1px dashed #000; padding-top: 4px; font-size: 8px; }
-          .center { text-align: center; margin-top: 6px; }
-        </style>
-      </head>
-      <body onload="window.print(); window.close();">
-        <div class="struk">
-          ${printContents}
-        </div>
-      </body>
-    </html>
-  `);
+<html>
+  <head>
+    <title>Struk Belanja</title>
+   <style>
+    @media print {
+    body {
+      margin: 0;
+      padding: 0;
+    }
+  }
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .struk {
+    max-width: 280px;
+    margin: auto;
+    padding: 12px 6px;
+  }
+
+  .logo {
+    display: block;
+    margin: 0 auto 10px;
+    max-height: 60px;
+  }
+
+  .struk-header {
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+
+  .subheader {
+    text-align: center;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    font-size: 14px;
+    padding: 4px 2px;
+  }
+
+  th {
+    border-bottom: 1px solid #000;
+  }
+
+  .right {
+    text-align: right;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .total {
+    border-top: 1px dashed #000;
+    margin-top: 8px;
+    padding-top: 8px;
+    font-weight: bold;
+  }
+
+  .thankyou {
+    margin-top: 12px;
+    font-style: italic;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .note {
+    text-align: center;
+    font-size: 12px;
+    margin-top: 6px;
+    color: #333;
+  }
+</style>
+
+  </head>
+  <body onload="window.print(); window.close();">
+    <div class="struk">
+      <img class="logo" src="${logoBase64}" alt="logo" />
+      <div class="struk-header">BASMALAH PLASTIK</div>
+      <div class="subheader">Tanggal: ${tanggalStr}</div>
+
+      ${printContents}
+
+      <div class="thankyou">-- Terima kasih --</div>
+      <div class="note">Barang yang sudah dibeli<br/>tidak dapat dikembalikan.</div>
+    </div>
+  </body>
+</html>
+`);
+
     printWindow.document.close();
   };
 
@@ -114,13 +217,19 @@ const Kasir = () => {
     if (barangModalOpen) {
       setProdukLoading(true);
       setProdukError(null);
+
+      const lokasiId = userRole === "admin" ? selectedLokasi : getUserLokasi();
+
       api
-        .get("/stok/", { headers: getAuthHeaders() })
+        .get("/stok/", {
+          headers: getAuthHeaders(),
+          params: lokasiId ? { id_lokasi: lokasiId } : {},
+        })
         .then((res) => setProdukList(res.data.data))
-        .catch((err) => setProdukError("Gagal mengambil data produk"))
+        .catch(() => setProdukError("Gagal mengambil data produk"))
         .finally(() => setProdukLoading(false));
     }
-  }, [barangModalOpen]);
+  }, [barangModalOpen, selectedLokasi, userRole]);
 
   useEffect(() => {
     // Jika produkList masih kosong, fetch data produk dari API
@@ -242,6 +351,9 @@ const Kasir = () => {
   };
 
   const handleSubmitTransaksi = async () => {
+    const id_kasir = Number(localStorage.getItem("id_kasir"));
+    const id_lokasi = Number(localStorage.getItem("id_lokasi"));
+
     // Cek jika tidak ada item yang dibeli
     if (dataPembelian.length === 0) {
       showAlert("error", "Tidak ada produk yang dibeli.");
@@ -257,8 +369,8 @@ const Kasir = () => {
 
     try {
       const payload = {
-        id_kasir: 1,
-        id_lokasi: 1,
+        id_kasir,
+        id_lokasi,
         id_pelanggan: Number(newItem.id_pelanggan) || null,
         nama_pelanggan: newItem.nama_pelanggan || "",
         kontak: newItem.kontak || "",
@@ -284,6 +396,7 @@ const Kasir = () => {
 
       showAlert("success", "Transaksi berhasil disimpan!");
       handlePrintStruk();
+      showAlert("success", "Struk berhasil dicetak!");
 
       setDataPembelian([]);
       setBayar("");
@@ -319,6 +432,7 @@ const Kasir = () => {
     tanggal_akhir: "",
     status_hutang: "",
     id_pelanggan: "",
+    id_lokasi: userRole === "kasir" ? getUserLokasi() : "",
   });
   const [dataHistoryTransaksi, setDataHistoryTransaksi] = useState([]);
   const [loadingHistoryTransaksi, setLoadingHistoryTransaksi] = useState(false);
@@ -352,12 +466,6 @@ const Kasir = () => {
     }
   }, [lihatHistoryTransaksiOpen]);
 
-  // Handler filter
-  const handleFilterRiwayatTransaksiChange = (e) => {
-    const { name, value } = e.target;
-    setFilterHistoryTransaksi((prev) => ({ ...prev, [name]: value }));
-  };
-
   // Fetch data mutasi dari endpoint baru
   useEffect(() => {
     if (lihatHistoryTransaksiOpen) {
@@ -369,8 +477,14 @@ const Kasir = () => {
             tanggal_awal: filterHistoryTransaksi.tanggal_awal,
             tanggal_akhir: filterHistoryTransaksi.tanggal_akhir,
             id_pelanggan: filterHistoryTransaksi.id_pelanggan,
+            ...(userRole === "kasir"
+              ? { id_lokasi: getUserLokasi() }
+              : filterHistoryTransaksi.id_lokasi
+              ? { id_lokasi: filterHistoryTransaksi.id_lokasi }
+              : {}),
           },
         })
+
         .then((res) => setDataHistoryTransaksi(res.data || []))
         .catch(() => setDataHistoryTransaksi([]))
         .finally(() => setLoadingHistoryTransaksi(false));
@@ -380,7 +494,14 @@ const Kasir = () => {
     filterHistoryTransaksi.tanggal_awal,
     filterHistoryTransaksi.tanggal_akhir,
     filterHistoryTransaksi.id_pelanggan,
+    filterHistoryTransaksi.id_lokasi,
   ]);
+
+  // Handler filter
+  const handleFilterRiwayatTransaksiChange = (e) => {
+    const { name, value } = e.target;
+    setFilterHistoryTransaksi((prev) => ({ ...prev, [name]: value }));
+  };
 
   const openLihatHistoryTransaksi = () => setLihatHistoryTransaksi(true);
   const closeLihatHistoryTransaksi = () => setLihatHistoryTransaksi(false);
@@ -414,20 +535,11 @@ const Kasir = () => {
       )}
       <h1 className="text-2xl font-bold pb-2">Kasir</h1>
       <div ref={strukRef} style={{ display: "none" }}>
-        <div
-          style={{ textAlign: "center", fontWeight: "bold", fontSize: "11px" }}
-        >
-          BASMALAH PLASTIK
-        </div>
-        <div
-          style={{ textAlign: "center", fontSize: "9px", marginBottom: "4px" }}
-        >
-          Tanggal: {new Date().toLocaleString("id-ID")}
-        </div>
-        <table style={{ width: "100%", fontSize: "8px" }}>
+        <table style={{ width: "100%", fontSize: "12px" }}>
           <thead>
             <tr>
               <th align="left">Barang</th>
+              <th align="center">Satuan</th>
               <th align="center">Qty</th>
               <th align="right">Harga</th>
             </tr>
@@ -435,12 +547,17 @@ const Kasir = () => {
           <tbody>
             {dataPembelian.map((item, idx) => (
               <tr key={idx}>
-                <td>
+                <td className="capitalize">
                   {item.nama_produk.length > 18
                     ? item.nama_produk.slice(0, 18) + "…"
                     : item.nama_produk}
                 </td>
-                <td align="center">{item.qty}</td>
+                <td align="center" className="capitalize">
+                  {item.satuan}
+                </td>
+                <td align="center" className="capitalize">
+                  {item.qty}
+                </td>
                 <td align="right">
                   Rp{Number(item.harga_jual).toLocaleString("id-ID")}
                 </td>
@@ -449,24 +566,30 @@ const Kasir = () => {
           </tbody>
         </table>
         <hr />
-        <div style={{ fontSize: "8px" }}>
-          <div>Subtotal: Rp{subtotal.toLocaleString("id-ID")}</div>
-          <div>Diskon: Rp{diskon.toLocaleString("id-ID")}</div>
+        <div style={{ fontSize: "12px" }}>
+          <div>SubTotal: Rp{subtotal.toLocaleString("id-ID")}</div>
+
+          <div>
+            Diskon: {diskon === 0 ? "-" : `Rp${diskon.toLocaleString("id-ID")}`}
+          </div>
           <div>
             <strong>Total: Rp{total.toLocaleString("id-ID")}</strong>
           </div>
-          <div>Bayar: Rp{bayarNominal.toLocaleString("id-ID")}</div>
-          <div>Kembali: Rp{kembalian.toLocaleString("id-ID")}</div>
-          <div>Pelanggan: {newItem.nama_pelanggan || "-"}</div>
-        </div>
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "0px",
-            fontSize: "12px",
-          }}
-        >
-          --- Terima Kasih ---
+          <div>
+            Bayar:
+            {bayarNominal === 0
+              ? "-"
+              : `Rp${bayarNominal.toLocaleString("id-ID")}`}
+          </div>
+          <div>
+            {kembalian < 0
+              ? `Hutang: Rp${Math.abs(kembalian).toLocaleString("id-ID")}`
+              : `Kembali: Rp${kembalian.toLocaleString("id-ID")}`}
+          </div>
+
+          <div className="capitalize">
+            Pelanggan: {newItem.nama_pelanggan || "-"}
+          </div>
         </div>
       </div>
 
@@ -551,7 +674,9 @@ const Kasir = () => {
                   {dataPembelian.map((item, id_produk) => (
                     <tr key={id_produk} className="bg-gray-200">
                       <td className="px-0.5 py-0.5 capitalize">
-                        {item.nama_produk}
+                        {item.nama_produk.length > 30
+                          ? item.nama_produk.slice(0, 30) + "…"
+                          : item.nama_produk}
                       </td>
                       <td className="px-0.5 py-0.5">
                         <input
@@ -666,9 +791,23 @@ const Kasir = () => {
                     name="nama"
                     value={newItem.nama_pelanggan}
                     onChange={handleAddChange}
-                    className="border rounded-lg px-2 py-1 w-full pr-10 capitalize"
+                    className="border rounded-lg px-2 py-1 w-full pr-10 capitalize text-sm"
                     placeholder="pilih pelanggan...."
                   />
+                  <button
+                    type="button"
+                    className="absolute right-10 top-1/2 -translate-y-1/2 text-red-500 text-xs underline hover:text-red-700"
+                    onClick={() =>
+                      setNewItem({
+                        ...newItem,
+                        id_pelanggan: null,
+                        nama_pelanggan: "",
+                        kontak: "",
+                      })
+                    }
+                  >
+                    Hapus
+                  </button>
                   <button
                     type="button"
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-[#1E686D] hover:text-green-600"
@@ -686,7 +825,7 @@ const Kasir = () => {
                   type="button"
                   onClick={handleSubmitTransaksi}
                 >
-                  Simpan Transaksi
+                  Cetak Struk
                 </button>
               </div>
             </div>
@@ -796,18 +935,25 @@ const Kasir = () => {
               </div>
 
               <form className="flex items-center gap-2 mb-4">
-                <select
-                  value={filterLokasi}
-                  onChange={(e) => setFilterLokasi(e.target.value)}
-                  className="border rounded-lg px-2 py-1 text-sm"
-                >
-                  <option value="">Semua Lokasi</option>
-                  {lokasiList.map((lokasi) => (
-                    <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
-                      {lokasi.nama_lokasi}
-                    </option>
-                  ))}
-                </select>
+                {userRole === "admin" && (
+                  <div className="mb-2">
+                    <label htmlFor="" className="text-xs">
+                      Pilih Lokasi
+                    </label>
+                    <select
+                      value={selectedLokasi}
+                      onChange={(e) => setSelectedLokasi(e.target.value)}
+                      className="border rounded-[10px] px-2 py-0.5 text-sm w-full capitalize text-gray-900 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="">-- Semua Lokasi --</option>
+                      {lokasiList.map((lokasi) => (
+                        <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                          {lokasi.nama_lokasi}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <label
                   htmlFor="default-search"
                   className="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
@@ -842,6 +988,7 @@ const Kasir = () => {
                   />
                 </div>
               </form>
+
               <div
                 className="relative overflow-x-auto shadow-md sm:rounded-lg"
                 style={{ maxHeight: "250px", overflowY: "auto" }}
@@ -888,7 +1035,9 @@ const Kasir = () => {
                               {item.barcode}
                             </td>
                             <td className="px-2 py-1.5 capitalize">
-                              {item.nama_produk}
+                              {item.nama_produk.length > 30
+                                ? item.nama_produk.slice(0, 30) + "…"
+                                : item.nama_produk}
                             </td>
                             <td className="px-2 py-1.5 capitalize">
                               {item.kategori}
@@ -963,28 +1112,43 @@ const Kasir = () => {
                 </button>
               </div>
               <div className="flex flex-col md:flex-row gap-2 mb-4">
+                {userRole === "admin" && (
+                  <select
+                    name="id_lokasi"
+                    value={filterHistoryTransaksi.id_lokasi}
+                    onChange={handleFilterRiwayatTransaksiChange}
+                    className="border rounded px-2 py-1 text-xs capitalize"
+                  >
+                    <option value="">Pilih Lokasi</option>
+                    {lokasiList.map((lokasi) => (
+                      <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                        {lokasi.nama_lokasi}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {/* Input tanggal & pelanggan sudah ada */}
+
                 <input
                   type="date"
                   name="tanggal_awal"
                   value={filterHistoryTransaksi.tanggal_awal}
                   onChange={handleFilterRiwayatTransaksiChange}
                   className="border rounded px-2 py-1 text-xs"
-                  placeholder="Tanggal Awal"
                 />
+
                 <input
                   type="date"
                   name="tanggal_akhir"
                   value={filterHistoryTransaksi.tanggal_akhir}
                   onChange={handleFilterRiwayatTransaksiChange}
                   className="border rounded px-2 py-1 text-xs"
-                  placeholder="Tanggal Akhir"
                 />
-
                 <select
                   name="id_pelanggan"
                   value={filterHistoryTransaksi.id_pelanggan}
                   onChange={handleFilterRiwayatTransaksiChange}
-                  className="border rounded px-2 py-1 text-xs"
+                  className="border rounded px-2 py-1 text-xs capitalize"
                 >
                   <option value="">Pilih Pelanggan</option>
                   {historyTransaksiList.map((pelanggan) => (
@@ -997,6 +1161,7 @@ const Kasir = () => {
                   ))}
                 </select>
               </div>
+
               <div
                 className="relative overflow-x-auto"
                 style={{ maxHeight: "300px", overflowY: "auto" }}

@@ -761,8 +761,8 @@ const Hutang = () => {
                       className="px-1 py-2 text-right cursor-pointer select-none"
                       onClick={() => handleSort("total_sisa_hutang")}
                     >
-                      <div className="flex items-center justify-end">
-                        Total Sisa Hutang
+                      <div className="flex items-center">
+                        Sisa Hutang
                         <SortIcon
                           active={sortBy === "total_sisa_hutang"}
                           asc={sortAsc}
@@ -795,8 +795,8 @@ const Hutang = () => {
                           </td>
                           <td className="px-1 py-1">{item.id_pelanggan}</td>
 
-                          <td className="px-1 py-1">{item.kontak}</td>
-                          <td className="px-1 py-1 text-right">
+                          <td className="px-1 py-1">{item.kontak || "-"}</td>
+                          <td className="px-1 py-1">
                             Rp.
                             {Number(item.total_sisa_hutang).toLocaleString(
                               "id-ID"

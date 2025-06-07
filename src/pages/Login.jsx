@@ -111,9 +111,9 @@ function Login() {
                 <input type="checkbox" className="mr-2" />
                 Ingat saya
               </label>
-              <a href="#" className="text-blue-500 hover:underline">
+              {/* <a href="#" className="text-blue-500 hover:underline">
                 Lupa password?
-              </a>
+              </a> */}
             </div>
 
             <button

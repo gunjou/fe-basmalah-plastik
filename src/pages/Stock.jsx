@@ -5,7 +5,22 @@ import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
 const Stock = () => {
-  // ...existing code...
+  const role = localStorage.getItem("role");
+  const userLokasi = localStorage.getItem("id_lokasi");
+
+  ///const [lokasiList, setLokasiList] = useState([]);
+  const [selectedLokasi, setSelectedLokasi] = useState(
+    role === "admin" ? "" : userLokasi
+  );
+
+  useEffect(() => {
+    if (role === "admin") {
+      api
+        .get("/lokasi/", { headers: getAuthHeaders() })
+        .then((res) => setLokasiList(res.data || []));
+    }
+  }, []);
+
   useEffect(() => {
     const role = localStorage.getItem("role");
     if (role !== "admin") {
@@ -35,12 +50,18 @@ const Stock = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
+
+    const lokasiId = role === "admin" ? selectedLokasi : userLokasi;
+
     api
-      .get("/stok/", { headers: getAuthHeaders() })
-      .then((res) => setData(res.data.data))
+      .get("/stok/", {
+        headers: getAuthHeaders(),
+        params: lokasiId ? { id_lokasi: lokasiId } : {},
+      })
+      .then((res) => setData(res.data.data || []))
       .catch(() => setError("Gagal mengambil data produk"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedLokasi, role]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -73,28 +94,28 @@ const Stock = () => {
       await api.put(
         `/stok/${editItem.id_stok}`,
         {
-          id_produk: editItem.id_produk, // Asumsi id_produk sudah ada di data
-          //id_produk: null, // Asumsi id_produk sudah ada di data
-          id_lokasi: 1, // Asumsi lokasi default adalah 1
+          id_produk: editItem.id_produk,
+          id_lokasi: Number(selectedLokasi || userLokasi),
           nama_produk: editItem.nama_produk,
           barcode: editItem.barcode,
           kategori: editItem.kategori,
           satuan: editItem.satuan,
-          // id_kategori: categories.find(
-          //   (cat) => cat.nama === (editItem.kategori || editItem.kategori)
-          // )?.id,
-          // id_satuan: units.find(
-          //   (unit) => unit.nama === (editItem.satuan || editItem.satuan)
-          // )?.id,
           harga_beli: Number(editItem.harga_beli),
           harga_jual: Number(editItem.harga_jual),
           jumlah: Number(editItem.jumlah),
         },
         { headers: getAuthHeaders() }
       );
+
       // Refresh data produk setelah edit
-      const res = await api.get("/stok/");
-      setData(res.data.data);
+      const lokasiId = role === "admin" ? selectedLokasi : userLokasi;
+
+      const res = await api.get("/stok/", {
+        headers: getAuthHeaders(),
+        params: lokasiId ? { id_lokasi: lokasiId } : {},
+      });
+      setData(res.data.data || []);
+
       closeModal();
     } catch (err) {
       alert(
@@ -170,7 +191,7 @@ const Stock = () => {
         "/stok/",
         {
           id_produk: null, // ID produk akan di-generate oleh API
-          id_lokasi: 1, // Asumsi lokasi default adalah 1
+          id_lokasi: Number(selectedLokasi || userLokasi),
           nama_produk: newItem.nama_produk,
           barcode: newItem.barcode,
           kategori: newItem.kategori,
@@ -182,8 +203,15 @@ const Stock = () => {
         { headers: getAuthHeaders() }
       );
       // Refresh data produk setelah tambah
-      const res = await api.get("/stok/");
-      setData(res.data.data);
+
+      const lokasiId = role === "admin" ? selectedLokasi : userLokasi;
+
+      const res = await api.get("/stok/", {
+        headers: getAuthHeaders(),
+        params: lokasiId ? { id_lokasi: lokasiId } : {},
+      });
+      setData(res.data.data || []);
+
       closeAddModal();
     } catch (err) {
       alert("Gagal menambah barang. Pastikan data sudah benar.");
@@ -520,6 +548,19 @@ const Stock = () => {
                 onChange={handleSearchChange}
               />
             </div>
+            {role === "admin" && (
+              <select
+                value={selectedLokasi}
+                onChange={(e) => setSelectedLokasi(e.target.value)}
+                className="border border-[#1E686D] rounded-[10px] text-sm px-3 py-2 hover:border-[#1E686D] focus:outline-none focus:ring-2 focus:ring-[#1E686D] dark:bg-[#1E686D] dark:border-[#1E686D] dark:text-white capitalize"
+              >
+                {lokasiList.map((lokasi) => (
+                  <option key={lokasi.id_lokasi} value={lokasi.id_lokasi}>
+                    {lokasi.nama_lokasi}
+                  </option>
+                ))}
+              </select>
+            )}
           </form>
         </div>
 
@@ -535,7 +576,7 @@ const Stock = () => {
             <table className="w-full text-sm text-left text-gray-500">
               <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
                 <tr>
-                  <th className="px-1 py-2 text-center">No</th>
+                  <th className="px-0.5 py-2 text-center">No</th>
                   <th
                     className="px-1 py-2 cursor-pointer select-none"
                     onClick={() => handleSort("barcode")}
@@ -588,7 +629,7 @@ const Stock = () => {
                     onClick={() => handleSort("jumlah")}
                   >
                     <div className="flex items-center">
-                      Jumlah Stock
+                      Stock
                       <SortIcon active={sortBy === "jumlah"} asc={sortAsc} />
                     </div>
                   </th>
@@ -612,31 +653,37 @@ const Stock = () => {
                       </td>
                       <td className="px-1 py-1 capitalize">{item.kategori}</td>
                       <td className="px-1 py-1 capitalize">{item.satuan}</td>
-                      <td className="px-1 py-1">Rp.{item.harga_beli}</td>
-                      <td className="px-1 py-1">Rp.{item.harga_jual}</td>
+                      <td className="px-1 py-1">
+                        Rp.
+                        {Number(item.harga_beli).toLocaleString("id-ID")}
+                      </td>
+                      <td className="px-1 py-1">
+                        Rp.
+                        {Number(item.harga_jual).toLocaleString("id-ID")}
+                      </td>
                       <td className="px-1 py-1">{item.jumlah}</td>
                       <td className="px-1 py-1">
                         {!readOnly && (
-                          <>
-                            <button
-                              className="bg-[#1E686D] hover:bg-green-600 text-white px-3 py-1 rounded-[10px] text-xs"
-                              onClick={() => handleAddToMutasi(item)}
-                            >
-                              Mutasi
-                            </button>
-                            <button
-                              className="ml-2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-[10px] text-xs"
-                              onClick={() => openEditModal(item)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="ml-2 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-[10px] text-xs"
-                              onClick={() => handleDelete(item)}
-                            >
-                              Hapus
-                            </button>
-                          </>
+                          <button
+                            className="bg-[#1E686D] hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
+                            onClick={() => handleAddToMutasi(item)}
+                          >
+                            Mutasi
+                          </button>
+                        )}
+                        <button
+                          className="ml-1 bg-green-500 hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
+                          onClick={() => openEditModal(item)}
+                        >
+                          Edit
+                        </button>
+                        {!readOnly && (
+                          <button
+                            className="ml-1 bg-red-600 hover:bg-red-700 text-white px-1 py-1 rounded-[10px] text-xs"
+                            onClick={() => handleDelete(item)}
+                          >
+                            Hapus
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -648,14 +695,13 @@ const Stock = () => {
         </div>
         <div className="flex items-center justify-between mt-4">
           <div className="flex space-x-2">
-            {!readOnly && (
-              <button
-                className="bg-[#1E686D] p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
-                onClick={openAddModal}
-              >
-                Tambah Stock Barang
-              </button>
-            )}
+            <button
+              className="bg-[#1E686D] p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
+              onClick={openAddModal}
+            >
+              Tambah Stock Barang
+            </button>
+
             {!readOnly && (
               <button
                 className="bg-green-400 p-2 rounded-[10px] text-xs text-white hover:bg-green-600"
@@ -750,7 +796,7 @@ const Stock = () => {
       </div>
 
       {/* Modal Tambah */}
-      {addModalOpen && !readOnly && (
+      {addModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <div className="flex items-center justify-between">
@@ -766,7 +812,7 @@ const Stock = () => {
             <p className="text-xs mb-4 text-gray-400">
               Tambahkan detail barang
             </p>
-            <form onSubmit={handleAddSubmit} className="space-y-3">
+            <form onSubmit={handleAddSubmit} className="space-y-0.5">
               <div>
                 <label className="block text-xs">Nama Barang</label>
                 <input
@@ -850,7 +896,7 @@ const Stock = () => {
                 <input
                   type="number"
                   name="harga_beli"
-                  value={newItem.harga_beli}
+                  value={newItem.harga_beli.to}
                   onChange={handleAddChange}
                   className="border rounded px-2 py-1 w-full"
                   required
@@ -900,12 +946,12 @@ const Stock = () => {
       )}
 
       {/* Modal Edit */}
-      {modalOpen && !readOnly && (
+      {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold">Edit Stock Barang</h2>
             <p className="text-xs mb-4 text-gray-400">Ubah detail barang</p>
-            <form onSubmit={handleEditSubmit} className="space-y-3">
+            <form onSubmit={handleEditSubmit} className="space-y-0.5">
               <div>
                 <label className="block text-xs">Nama Barang</label>
                 <input
@@ -915,6 +961,7 @@ const Stock = () => {
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
+                  readOnly={readOnly}
                 />
               </div>
               <div>
@@ -926,6 +973,7 @@ const Stock = () => {
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
+                  readOnly={readOnly}
                 />
               </div>
 
@@ -938,6 +986,7 @@ const Stock = () => {
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
+                  readOnly={readOnly}
                 />
               </div>
 
@@ -968,6 +1017,7 @@ const Stock = () => {
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
+                  readOnly={readOnly}
                 />
               </div>
 
@@ -998,6 +1048,7 @@ const Stock = () => {
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
+                  readOnly={readOnly}
                 />
               </div>
               <div>
@@ -1009,6 +1060,7 @@ const Stock = () => {
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
                   required
+                  readOnly={readOnly}
                 />
               </div>
               <div>

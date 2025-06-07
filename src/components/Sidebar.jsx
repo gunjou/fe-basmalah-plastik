@@ -13,12 +13,17 @@ import {
 import { NavLink } from "react-router-dom";
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+  const role = localStorage.getItem("role");
   const menuItems = [
     { name: "Kasir", icon: <LayoutDashboard size={18} />, path: "/kasir" },
     { name: "Stock", icon: <Package size={18} />, path: "/stock" },
-    { name: "Pelanggan", icon: <Users size={18} />, path: "/pelanggan" },
     { name: "Hutang", icon: <DollarSign size={18} />, path: "/hutang" },
-    { name: "Laporan", icon: <FileText size={18} />, path: "/laporan" },
+    ...(role === "admin"
+      ? [
+          { name: "Pelanggan", icon: <Users size={18} />, path: "/pelanggan" },
+          { name: "Laporan", icon: <FileText size={18} />, path: "/laporan" },
+        ]
+      : []),
     { name: "Tentang", icon: <BadgeInfo size={18} />, path: "/tentang" },
   ];
 
@@ -32,12 +37,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       <div className="flex flex-col gap-1 p-4">
         <div className="flex items-center justify-between">
           {isOpen && <h1 className="text-lg font-bold">BASMALAH PLASTIK</h1>}
+
           <button onClick={() => setIsOpen(!isOpen)} className="text-white">
             {isOpen ? <X size={20} /> : <Menu size={30} />}
           </button>
         </div>
         {isOpen && (
-          <span className="text-xs text-gray-300">by Outlook Project</span>
+          <label className="text-xs text-gray-300">by Outlook Project</label>
         )}
       </div>
 

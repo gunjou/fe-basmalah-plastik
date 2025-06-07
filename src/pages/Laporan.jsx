@@ -132,15 +132,27 @@ const Laporan = () => {
       alert("jspdf-autotable belum terpasang dengan benar!");
       return;
     }
+
+    const lokasiNama =
+      lokasiList.find((l) => l.id_lokasi === filterLokasi)?.nama_lokasi ||
+      "Semua Lokasi";
+    const produkNama =
+      produkList.find((p) => p.id_produk === filterProduk)?.nama_produk ||
+      "Semua Produk";
+
     let title = "";
     let columns = [];
     let rows = [];
+    let ringkasan = [];
 
     if (activeTab === "item") {
       title = "Laporan Penjualan Item";
       columns = [
         { header: "No", dataKey: "no" },
         { header: "Nama Produk", dataKey: "nama_produk" },
+        { header: "Satuan", dataKey: "satuan" },
+
+        { header: "Lokasi", dataKey: "nama_lokasi" },
         { header: "Total Qty", dataKey: "total_qty" },
         { header: "Harga Beli", dataKey: "harga_beli" },
         { header: "Harga Jual", dataKey: "harga_jual" },
@@ -151,6 +163,8 @@ const Laporan = () => {
       rows = sortedData.map((item, idx) => ({
         no: idx + 1,
         nama_produk: item.nama_produk,
+        satuan: item.satuan,
+        nama_lokasi: item.nama_lokasi,
         total_qty: item.total_qty,
         harga_beli: `Rp. ${item.harga_beli?.toLocaleString("id-ID")}`,
         harga_jual: `Rp. ${item.harga_jual?.toLocaleString("id-ID")}`,
@@ -158,48 +172,156 @@ const Laporan = () => {
         modal: `Rp. ${item.modal?.toLocaleString("id-ID")}`,
         keuntungan: `Rp. ${item.keuntungan?.toLocaleString("id-ID")}`,
       }));
+      ringkasan = [
+        ["Total Jenis Produk Terjual", `${sortedData.length} Produk`],
+        [
+          "Total Qty Terjual",
+          `${sortedData.reduce(
+            (a, b) => a + (Number(b.total_qty) || 0),
+            0
+          )} Produk`,
+        ],
+        [
+          "Total Keuntungan",
+          `Rp. ${sortedData
+            .reduce((a, b) => a + (Number(b.keuntungan) || 0), 0)
+            .toLocaleString("id-ID")}`,
+        ],
+      ];
     } else if (activeTab === "transaksi") {
       title = "Laporan Transaksi Penjualan";
       columns = [
         { header: "No", dataKey: "no" },
         { header: "Tanggal", dataKey: "tanggal" },
-        { header: "Nama Pelanggan", dataKey: "nama_pelanggan" },
         { header: "Total", dataKey: "total" },
-        { header: "Status", dataKey: "status" },
+        { header: "Tunai", dataKey: "tunai" },
+        { header: "Kembalian", dataKey: "kembalian" },
+        { header: "Hutang", dataKey: "sisa_hutang" },
+        { header: "Modal", dataKey: "modal" },
+        { header: "Keuntungan", dataKey: "keuntungan" },
       ];
       rows = sortedData.map((item, idx) => ({
         no: idx + 1,
         tanggal: item.tanggal,
-        nama_pelanggan: item.nama_pelanggan,
-        total: `Rp. ${item.total?.toLocaleString("id-ID")}`,
-        status: item.status,
+        total: `Rp. ${Number(item.total || 0).toLocaleString("id-ID")}`,
+        tunai: `Rp. ${Number(item.tunai || 0).toLocaleString("id-ID")}`,
+        kembalian: `Rp. ${Number(item.kembalian || 0).toLocaleString("id-ID")}`,
+        sisa_hutang: `Rp. ${Number(item.sisa_hutang || 0).toLocaleString(
+          "id-ID"
+        )}`,
+        modal: `Rp. ${Number(item.modal || 0).toLocaleString("id-ID")}`,
+        keuntungan: `Rp. ${Number(item.keuntungan || 0).toLocaleString(
+          "id-ID"
+        )}`,
       }));
+      ringkasan = [
+        [
+          "Total Transaksi",
+          `Rp. ${sortedData
+            .reduce((a, b) => a + (Number(b.total) || 0), 0)
+            .toLocaleString("id-ID")}`,
+        ],
+        [
+          "Total Hutang",
+          `Rp. ${sortedData
+            .reduce((a, b) => a + (Number(b.sisa_hutang) || 0), 0)
+            .toLocaleString("id-ID")}`,
+        ],
+        [
+          "Total Keuntungan",
+          `Rp. ${sortedData
+            .reduce((a, b) => a + (Number(b.keuntungan) || 0), 0)
+            .toLocaleString("id-ID")}`,
+        ],
+      ];
     } else if (activeTab === "stok") {
       title = "Laporan Stok Barang";
       columns = [
         { header: "No", dataKey: "no" },
         { header: "Nama Produk", dataKey: "nama_produk" },
-        { header: "Stok", dataKey: "stok" },
         { header: "Satuan", dataKey: "satuan" },
+        { header: "Lokasi", dataKey: "nama_lokasi" },
+        { header: "Harga Beli", dataKey: "harga_beli" },
+        { header: "Harga Jual", dataKey: "harga_jual" },
+        { header: "Sisa Stok", dataKey: "sisa_stok" },
+        { header: "Nilai Modal", dataKey: "nilai_modal" },
+        { header: "Potensi Keuntungan", dataKey: "potensi_keuntungan" },
       ];
       rows = sortedData.map((item, idx) => ({
         no: idx + 1,
         nama_produk: item.nama_produk,
-        stok: item.stok,
         satuan: item.satuan,
+        nama_lokasi: item.nama_lokasi,
+        harga_beli: `Rp. ${Number(item.harga_beli || 0).toLocaleString(
+          "id-ID"
+        )}`,
+        harga_jual: `Rp. ${Number(item.harga_jual || 0).toLocaleString(
+          "id-ID"
+        )}`,
+        sisa_stok: `${Number(item.sisa_stok || 0).toLocaleString("id-ID")}`,
+        nilai_modal: `Rp. ${Number(item.nilai_modal || 0).toLocaleString(
+          "id-ID"
+        )}`,
+        potensi_keuntungan: `Rp. ${Number(
+          item.potensi_keuntungan || 0
+        ).toLocaleString("id-ID")}`,
       }));
+      ringkasan = [
+        [
+          "Total Modal",
+          `Rp. ${sortedData
+            .reduce((a, b) => a + (Number(b.nilai_modal) || 0), 0)
+            .toLocaleString("id-ID")}`,
+        ],
+        [
+          "Total Potensi Keuntungan",
+          `Rp. ${sortedData
+            .reduce((a, b) => a + (Number(b.potensi_keuntungan) || 0), 0)
+            .toLocaleString("id-ID")}`,
+        ],
+      ];
     }
 
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Header
     doc.setFontSize(16);
     doc.text(title, 14, 14);
+
+    // Filter
+    doc.setFontSize(10);
+    if (activeTab !== "transaksi") {
+      doc.text(`Filter Lokasi: ${lokasiNama}`, 14, 22);
+      doc.text(`Filter Produk: ${produkNama}`, 14, 28);
+    }
+
+    const startY = activeTab !== "transaksi" ? 34 : 26;
+
+    // Tabel
     doc.autoTable({
-      startY: 22,
+      startY,
       columns,
       body: rows,
-      styles: { fontSize: 10 },
+      styles: { fontSize: 9, overflow: "linebreak", cellPadding: 2 },
       headStyles: { fillColor: [30, 104, 109] },
       theme: "grid",
     });
+
+    // Ringkasan kanan bawah
+    let finalY = doc.lastAutoTable.finalY + 10;
+    const labelX = pageWidth - 100;
+    const valueX = pageWidth - 20;
+
+    doc.setFontSize(11);
+    doc.text("Ringkasan:", labelX, finalY);
+    finalY += 6;
+
+    ringkasan.forEach(([label, value]) => {
+      doc.text(`${label}`, labelX, finalY);
+      doc.text(`${value}`, valueX, finalY, { align: "right" });
+      finalY += 6;
+    });
+
     doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
   };
 
@@ -331,6 +453,16 @@ const Laporan = () => {
                     </th>
                     <th
                       className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("satuan")}
+                    >
+                      <div className="flex items-center">
+                        Satuan
+                        <SortIcon active={sortBy === "satuan"} asc={sortAsc} />
+                      </div>
+                    </th>
+
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
                       onClick={() => handleSort("total_qty")}
                     >
                       <div className="flex items-center">
@@ -407,6 +539,7 @@ const Laporan = () => {
                       <td className="px-1 py-1 capitalize">
                         {item.nama_produk}
                       </td>
+                      <td className="px-1 py-1 capitalize">{item.satuan}</td>
                       <td className="px-1 py-1">{item.total_qty}</td>
                       <td className="px-1 py-1">{`Rp. ${item.harga_beli?.toLocaleString(
                         "id-ID"
@@ -742,7 +875,7 @@ const Laporan = () => {
                       onClick={() => handleSort("nama_lokasi")}
                     >
                       <div className="flex items-center">
-                        Nama Lokasi
+                        Lokasi
                         <SortIcon
                           active={sortBy === "nama_lokasi"}
                           asc={sortAsc}
@@ -759,6 +892,15 @@ const Laporan = () => {
                           active={sortBy === "nama_produk"}
                           asc={sortAsc}
                         />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("satuan")}
+                    >
+                      <div className="flex items-center">
+                        satuan
+                        <SortIcon active={sortBy === "satuan"} asc={sortAsc} />
                       </div>
                     </th>
                     <th
@@ -831,6 +973,8 @@ const Laporan = () => {
                         {item.nama_lokasi}
                       </td>
                       <td className="px-1 py-1">{item.nama_produk}</td>
+                      <td className="px-1 py-1">{item.satuan}</td>
+
                       <td className="px-1 py-1">
                         {item.harga_beli === 0 ||
                         item.harga_beli === "0" ||
