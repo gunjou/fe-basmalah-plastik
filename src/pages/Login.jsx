@@ -106,15 +106,15 @@ function Login() {
 
             {errorMsg && <div className="text-red-600 text-sm">{errorMsg}</div>}
 
-            <div className="flex items-center justify-between text-sm">
+            {/* <div className="flex items-center justify-between text-sm">
               <label className="flex items-center">
                 <input type="checkbox" className="mr-2" />
                 Ingat saya
               </label>
-              {/* <a href="#" className="text-blue-500 hover:underline">
+              <a href="#" className="text-blue-500 hover:underline">
                 Lupa password?
-              </a> */}
-            </div>
+              </a>
+            </div> */}
 
             <button
               type="submit"
