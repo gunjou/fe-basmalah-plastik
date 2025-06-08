@@ -77,7 +77,7 @@ const Kasir = () => {
 
   .logo {
     display: block;
-    margin: 0 auto 10px;
+    margin: 0 auto 5px;
     max-height: 60px;
   }
 
