@@ -15,7 +15,9 @@ import { NavLink } from "react-router-dom";
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const role = localStorage.getItem("role");
   const menuItems = [
-    { name: "Kasir", icon: <LayoutDashboard size={18} />, path: "/kasir" },
+    ...(role !== "admin"
+      ? [{ name: "Kasir", icon: <LayoutDashboard size={18} />, path: "/kasir" }]
+      : []),
     { name: "Stock", icon: <Package size={18} />, path: "/stock" },
     { name: "Hutang", icon: <DollarSign size={18} />, path: "/hutang" },
     ...(role === "admin"
