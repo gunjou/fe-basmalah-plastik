@@ -35,10 +35,12 @@ const Laporan = () => {
   const [tanggalAwal, setTanggalAwal] = useState("");
   const [tanggalAkhir, setTanggalAkhir] = useState("");
 
-  const [filterPeriodeTransaksi, setFilterPeriodeTransaksi] =
-    useState("hari_ini");
+  const [filterPeriodeTransaksi, setFilterPeriodeTransaksi] = useState("today");
   const [tanggalAwalTransaksi, setTanggalAwalTransaksi] = useState("");
   const [tanggalAkhirTransaksi, setTanggalAkhirTransaksi] = useState("");
+
+  const [periodeKey, setPeriodeKey] = useState(0);
+  const [periodeTransaksiKey, setPeriodeTransaksiKey] = useState(0);
 
   // Sorting
   const [sortBy, setSortBy] = useState("nama_produk");
@@ -72,31 +74,25 @@ const Laporan = () => {
       if (filterProduk) params.id_produk = filterProduk;
       if (filterPeriode) params.periode = filterPeriode;
 
-      if (filterPeriode) params.periode = filterPeriode;
-
-      if (filterPeriode.includes("range")) {
-        if (tanggalAwal) params.start_date = tanggalAwal;
-        if (tanggalAkhir) params.end_date = tanggalAkhir;
-      }
+      if (tanggalAwal) params.start_date = tanggalAwal;
+      if (tanggalAkhir) params.end_date = tanggalAkhir;
 
       api
         .get("/laporan/penjualan-item", { params, headers: getAuthHeaders() })
         .then((res) => setDataItem(res.data.data))
-        .catch(() => setError("Gagal mengambil data"))
+        .catch(() => setError("tidak ada data"))
         .finally(() => setLoading(false));
     } else if (activeTab === "transaksi") {
       const params = {};
       if (filterPeriodeTransaksi) params.periode = filterPeriodeTransaksi;
 
-      if (filterPeriodeTransaksi.includes("range")) {
-        if (tanggalAwalTransaksi) params.start_date = tanggalAwalTransaksi;
-        if (tanggalAkhirTransaksi) params.end_date = tanggalAkhirTransaksi;
-      }
+      if (tanggalAwalTransaksi) params.start_date = tanggalAwalTransaksi;
+      if (tanggalAkhirTransaksi) params.end_date = tanggalAkhirTransaksi;
 
       api
         .get("/laporan/transaksi", { params, headers: getAuthHeaders() })
         .then((res) => setDataTransaksi(res.data.data))
-        .catch(() => setError("Gagal mengambil data"))
+        .catch(() => setError("tidak ada data"))
         .finally(() => setLoading(false));
     } else if (activeTab === "stok") {
       const params = {};
@@ -123,7 +119,23 @@ const Laporan = () => {
     filterPeriodeTransaksi,
     tanggalAwalTransaksi,
     tanggalAkhirTransaksi,
+    periodeKey,
+    periodeTransaksiKey,
   ]);
+
+  useEffect(() => {
+    if (filterPeriode !== "range") {
+      setTanggalAwal("");
+      setTanggalAkhir("");
+    }
+  }, [filterPeriode]);
+
+  useEffect(() => {
+    if (filterPeriodeTransaksi !== "range") {
+      setTanggalAwalTransaksi("");
+      setTanggalAkhirTransaksi("");
+    }
+  }, [filterPeriodeTransaksi]);
 
   // Sorting function
   const filteredStok = dataStok.filter((item) => {
@@ -485,11 +497,15 @@ const Laporan = () => {
                 <select
                   className="border rounded px-2 py-1 text-sm"
                   value={filterPeriode}
-                  onChange={(e) => setFilterPeriode(e.target.value)}
+                  onChange={(e) => {
+                    setFilterPeriode(e.target.value);
+                    setPeriodeKey((prev) => prev + 1); // trigger ulang meskipun nilainya sama
+                  }}
                 >
+                  <option value="">Semua</option>
                   <option value="hari_ini, range">Hari Ini</option>
                   <option value="minggu_ini, range">Minggu Ini</option>
-                  <option value="tahun_ini, range">Tahun Ini</option>
+                  <option value="bulan_ini, range">Bulan Ini</option>
                   <option value="range">Range Tanggal</option>
                 </select>
               </div>
@@ -730,16 +746,20 @@ const Laporan = () => {
                 <select
                   className="border rounded px-2 py-1 text-sm"
                   value={filterPeriodeTransaksi}
-                  onChange={(e) => setFilterPeriodeTransaksi(e.target.value)}
+                  // onChange={(e) => setFilterPeriodeTransaksi(e.target.value)}
+                  onChange={(e) => {
+                    setFilterPeriodeTransaksi(e.target.value);
+                    setPeriodeTransaksiKey((prev) => prev + 1); // trigger ulang meskipun nilainya sama
+                  }}
                 >
-                  <option value="hari_ini, range">Hari Ini</option>
-                  <option value="minggu_ini, range">Minggu Ini</option>
-                  <option value="tahun_ini, range">Tahun Ini</option>
+                  <option value="today">Hari Ini</option>
+                  <option value="this_week">Minggu Ini</option>
+                  <option value="this_month">Bulan Ini</option>
                   <option value="range">Range Tanggal</option>
                 </select>
               </div>
 
-              {filterPeriodeTransaksi.includes("range") && (
+              {filterPeriodeTransaksi === "range" && (
                 <>
                   <div>
                     <label className="block text-xs mb-1">Tanggal Awal</label>
@@ -762,7 +782,6 @@ const Laporan = () => {
                 </>
               )}
             </div>
-
             <div
               className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
               style={{ maxHeight: "300px", overflowY: "auto" }}
