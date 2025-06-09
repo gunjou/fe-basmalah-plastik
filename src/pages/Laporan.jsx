@@ -123,6 +123,21 @@ const Laporan = () => {
     periodeTransaksiKey,
   ]);
 
+  const periodeOptions = [
+    { label: "Semua", value: "" },
+    { label: "Hari Ini", value: "hari_ini" },
+    { label: "Minggu Ini", value: "minggu_ini" },
+    { label: "Bulan Ini", value: "bulan_ini" },
+    { label: "Pilih Tanggal", value: "range" },
+  ];
+
+  const periodeTransaksiOptions = [
+    { label: "Hari Ini", value: "today" },
+    { label: "Minggu Ini", value: "this_week" },
+    { label: "Bulan Ini", value: "this_month" },
+    { label: "Pilih Tanggal", value: "range" },
+  ];
+
   useEffect(() => {
     if (filterPeriode !== "range") {
       setTanggalAwal("");
@@ -203,6 +218,23 @@ const Laporan = () => {
     const produkNama =
       produkList.find((p) => p.id_produk === filterProduk)?.nama_produk ||
       "Semua Produk";
+    const periodeText =
+      activeTab === "transaksi"
+        ? periodeTransaksiOptions.find(
+            (opt) => opt.value === filterPeriodeTransaksi
+          )?.label || "-"
+        : periodeOptions.find((opt) => opt.value === filterPeriode)?.label ||
+          "-";
+
+    let periodeDetail = `Periode: ${periodeText}`;
+    if (
+      (activeTab === "item" && filterPeriode === "range") ||
+      (activeTab === "transaksi" && filterPeriodeTransaksi === "range")
+    ) {
+      const start = activeTab === "item" ? tanggalAwal : tanggalAwalTransaksi;
+      const end = activeTab === "item" ? tanggalAkhir : tanggalAkhirTransaksi;
+      periodeDetail += ` (${start || "-"} s/d ${end || "-"})`;
+    }
 
     let title = "";
     let columns = [];
@@ -215,7 +247,7 @@ const Laporan = () => {
         { header: "No", dataKey: "no" },
         { header: "Nama Produk", dataKey: "nama_produk" },
         { header: "Satuan", dataKey: "satuan" },
-        { header: "Lokasi", dataKey: "nama_lokasi" },
+        // { header: "Lokasi", dataKey: "nama_lokasi" },
         { header: "Total Qty", dataKey: "total_qty" },
         { header: "Harga Beli", dataKey: "harga_beli" },
         { header: "Harga Jual", dataKey: "harga_jual" },
@@ -227,7 +259,7 @@ const Laporan = () => {
         no: idx + 1,
         nama_produk: item.nama_produk,
         satuan: item.satuan,
-        nama_lokasi: item.nama_lokasi,
+        //  nama_lokasi: item.nama_lokasi,
         total_qty: item.total_qty,
         harga_beli: `Rp. ${item.harga_beli?.toLocaleString("id-ID")}`,
         harga_jual: `Rp. ${item.harga_jual?.toLocaleString("id-ID")}`,
@@ -353,12 +385,14 @@ const Laporan = () => {
 
     // Filter
     doc.setFontSize(10);
+    doc.text(`Periode: ${periodeText}`, 14, 22);
+
     if (activeTab !== "transaksi") {
-      doc.text(`Filter Lokasi: ${lokasiNama}`, 14, 22);
-      doc.text(`Filter Produk: ${produkNama}`, 14, 28);
+      doc.text(`Lokasi: ${lokasiNama}`, 14, 28);
+      doc.text(`Produk: ${produkNama}`, 14, 34);
     }
 
-    const startY = activeTab !== "transaksi" ? 34 : 26;
+    const startY = activeTab === "transaksi" ? 28 : 40;
 
     // Tabel
     doc.autoTable({
@@ -376,7 +410,7 @@ const Laporan = () => {
     const valueX = pageWidth - 20;
 
     doc.setFontSize(11);
-    doc.text("Ringkasan:", labelX, finalY);
+    doc.text("", labelX, finalY);
     finalY += 6;
 
     ringkasan.forEach(([label, value]) => {
@@ -460,8 +494,8 @@ const Laporan = () => {
       <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
         {activeTab === "item" && (
           <div>
-            {/* Filter */}
             <div className="flex flex-wrap gap-4 mb-4">
+              {/* Lokasi */}
               <div>
                 <label className="block text-xs mb-1">Lokasi</label>
                 <select
@@ -477,6 +511,8 @@ const Laporan = () => {
                   ))}
                 </select>
               </div>
+
+              {/* Produk */}
               <div>
                 <label className="block text-xs mb-1">Produk</label>
                 <select
@@ -492,6 +528,8 @@ const Laporan = () => {
                   ))}
                 </select>
               </div>
+
+              {/* Periode */}
               <div>
                 <label className="block text-xs mb-1">Periode</label>
                 <select
@@ -499,17 +537,18 @@ const Laporan = () => {
                   value={filterPeriode}
                   onChange={(e) => {
                     setFilterPeriode(e.target.value);
-                    setPeriodeKey((prev) => prev + 1); // trigger ulang meskipun nilainya sama
+                    setPeriodeKey((prev) => prev + 1);
                   }}
                 >
-                  <option value="">Semua</option>
-                  <option value="hari_ini, range">Hari Ini</option>
-                  <option value="minggu_ini, range">Minggu Ini</option>
-                  <option value="bulan_ini, range">Bulan Ini</option>
-                  <option value="range">Range Tanggal</option>
+                  {periodeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
+              {/* Tanggal jika Range */}
               {filterPeriode === "range" && (
                 <>
                   <div>
@@ -533,6 +572,7 @@ const Laporan = () => {
                 </>
               )}
             </div>
+
             {/* Tabel Laporan Item */}
             <div
               className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
@@ -746,16 +786,16 @@ const Laporan = () => {
                 <select
                   className="border rounded px-2 py-1 text-sm"
                   value={filterPeriodeTransaksi}
-                  // onChange={(e) => setFilterPeriodeTransaksi(e.target.value)}
                   onChange={(e) => {
                     setFilterPeriodeTransaksi(e.target.value);
-                    setPeriodeTransaksiKey((prev) => prev + 1); // trigger ulang meskipun nilainya sama
+                    setPeriodeTransaksiKey((prev) => prev + 1);
                   }}
                 >
-                  <option value="today">Hari Ini</option>
-                  <option value="this_week">Minggu Ini</option>
-                  <option value="this_month">Bulan Ini</option>
-                  <option value="range">Range Tanggal</option>
+                  {periodeTransaksiOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -782,6 +822,7 @@ const Laporan = () => {
                 </>
               )}
             </div>
+
             <div
               className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
               style={{ maxHeight: "300px", overflowY: "auto" }}
