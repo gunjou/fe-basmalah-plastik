@@ -709,7 +709,7 @@ const Hutang = () => {
 
           <div
             className="relative overflow-x-auto shadow-md sm:rounded-lg"
-            style={{ maxHeight: "300px", overflowY: "auto" }}
+            style={{ maxHeight: "280px", overflowY: "auto" }}
           >
             {totalHutangLoading ? (
               <div className="text-center py-8">

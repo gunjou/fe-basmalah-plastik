@@ -27,8 +27,18 @@ const Laporan = () => {
   // State filter
   const [lokasiList, setLokasiList] = useState([]);
   const [produkList, setProdukList] = useState([]);
+
   const [filterLokasi, setFilterLokasi] = useState("");
   const [filterProduk, setFilterProduk] = useState("");
+
+  const [filterPeriode, setFilterPeriode] = useState("hari_ini");
+  const [tanggalAwal, setTanggalAwal] = useState("");
+  const [tanggalAkhir, setTanggalAkhir] = useState("");
+
+  const [filterPeriodeTransaksi, setFilterPeriodeTransaksi] =
+    useState("hari_ini");
+  const [tanggalAwalTransaksi, setTanggalAwalTransaksi] = useState("");
+  const [tanggalAkhirTransaksi, setTanggalAkhirTransaksi] = useState("");
 
   // Sorting
   const [sortBy, setSortBy] = useState("nama_produk");
@@ -40,11 +50,17 @@ const Laporan = () => {
       .get("/lokasi/", { headers: getAuthHeaders() })
       .then((res) => setLokasiList(res.data || []))
       .catch(() => setLokasiList([]));
+
+    const produkEndpoint =
+      activeTab === "stok"
+        ? "/laporan/filter/produk-tersedia"
+        : "/laporan/filter/produk-terjual";
+
     api
-      .get("/produk/", { headers: getAuthHeaders() })
+      .get(produkEndpoint, { headers: getAuthHeaders() })
       .then((res) => setProdukList(res.data.data || []))
       .catch(() => setProdukList([]));
-  }, []);
+  }, [activeTab]);
 
   // Fetch data sesuai tab & filter
   useEffect(() => {
@@ -54,25 +70,60 @@ const Laporan = () => {
       let params = {};
       if (filterLokasi) params.id_lokasi = filterLokasi;
       if (filterProduk) params.id_produk = filterProduk;
+      if (filterPeriode) params.periode = filterPeriode;
+
+      if (filterPeriode) params.periode = filterPeriode;
+
+      if (filterPeriode.includes("range")) {
+        if (tanggalAwal) params.start_date = tanggalAwal;
+        if (tanggalAkhir) params.end_date = tanggalAkhir;
+      }
+
       api
         .get("/laporan/penjualan-item", { params, headers: getAuthHeaders() })
         .then((res) => setDataItem(res.data.data))
         .catch(() => setError("Gagal mengambil data"))
         .finally(() => setLoading(false));
     } else if (activeTab === "transaksi") {
+      const params = {};
+      if (filterPeriodeTransaksi) params.periode = filterPeriodeTransaksi;
+
+      if (filterPeriodeTransaksi.includes("range")) {
+        if (tanggalAwalTransaksi) params.start_date = tanggalAwalTransaksi;
+        if (tanggalAkhirTransaksi) params.end_date = tanggalAkhirTransaksi;
+      }
+
       api
-        .get("/laporan/transaksi", { headers: getAuthHeaders() })
+        .get("/laporan/transaksi", { params, headers: getAuthHeaders() })
         .then((res) => setDataTransaksi(res.data.data))
         .catch(() => setError("Gagal mengambil data"))
         .finally(() => setLoading(false));
     } else if (activeTab === "stok") {
+      const params = {};
+      if (filterLokasi) params.id_lokasi = Number(filterLokasi);
+      if (filterProduk) params.id_produk = Number(filterProduk);
       api
-        .get("/laporan/stok", { headers: getAuthHeaders() })
-        .then((res) => setDataStok(res.data.data))
+        .get("/laporan/stok", {
+          params,
+          headers: getAuthHeaders(),
+        })
+        .then((res) => {
+          setDataStok(res.data.data);
+        })
         .catch(() => setError("Gagal mengambil data"))
         .finally(() => setLoading(false));
     }
-  }, [activeTab, filterLokasi, filterProduk]);
+  }, [
+    activeTab,
+    filterLokasi,
+    filterProduk,
+    filterPeriode,
+    tanggalAwal,
+    tanggalAkhir,
+    filterPeriodeTransaksi,
+    tanggalAwalTransaksi,
+    tanggalAkhirTransaksi,
+  ]);
 
   // Sorting function
   const filteredStok = dataStok.filter((item) => {
@@ -80,9 +131,10 @@ const Laporan = () => {
     const matchProduk = !filterProduk || item.id_produk === filterProduk;
     return matchLokasi && matchProduk;
   });
+
   const sortedData =
     activeTab === "stok"
-      ? [...filteredStok].sort((a, b) => {
+      ? [...dataStok].sort((a, b) => {
           if (a[sortBy] < b[sortBy]) return sortAsc ? -1 : 1;
           if (a[sortBy] > b[sortBy]) return sortAsc ? 1 : -1;
           return 0;
@@ -151,7 +203,6 @@ const Laporan = () => {
         { header: "No", dataKey: "no" },
         { header: "Nama Produk", dataKey: "nama_produk" },
         { header: "Satuan", dataKey: "satuan" },
-
         { header: "Lokasi", dataKey: "nama_lokasi" },
         { header: "Total Qty", dataKey: "total_qty" },
         { header: "Harga Beli", dataKey: "harga_beli" },
@@ -429,6 +480,42 @@ const Laporan = () => {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-xs mb-1">Periode</label>
+                <select
+                  className="border rounded px-2 py-1 text-sm"
+                  value={filterPeriode}
+                  onChange={(e) => setFilterPeriode(e.target.value)}
+                >
+                  <option value="hari_ini, range">Hari Ini</option>
+                  <option value="minggu_ini, range">Minggu Ini</option>
+                  <option value="tahun_ini, range">Tahun Ini</option>
+                  <option value="range">Range Tanggal</option>
+                </select>
+              </div>
+
+              {filterPeriode === "range" && (
+                <>
+                  <div>
+                    <label className="block text-xs mb-1">Tanggal Awal</label>
+                    <input
+                      type="date"
+                      className="border rounded px-2 py-1 text-sm"
+                      value={tanggalAwal}
+                      onChange={(e) => setTanggalAwal(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1">Tanggal Akhir</label>
+                    <input
+                      type="date"
+                      className="border rounded px-2 py-1 text-sm"
+                      value={tanggalAkhir}
+                      onChange={(e) => setTanggalAkhir(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
             {/* Tabel Laporan Item */}
             <div
@@ -533,44 +620,57 @@ const Laporan = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedData.map((item, idx) => (
-                    <tr key={idx} className="bg-white border-b">
-                      <td className="px-1 py-1 text-center">{idx + 1}</td>
-                      <td className="px-1 py-1 capitalize">
-                        {item.nama_produk}
+                  {sortedData.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        className="text-center py-4 text-red-500 font-semibold"
+                      >
+                        Tidak ada data ditemukan
                       </td>
-                      <td className="px-1 py-1 capitalize">{item.satuan}</td>
-                      <td className="px-1 py-1">{item.total_qty}</td>
-                      <td className="px-1 py-1">{`Rp. ${item.harga_beli?.toLocaleString(
-                        "id-ID"
-                      )}`}</td>
-                      <td className="px-1 py-1">{`Rp. ${item.harga_jual?.toLocaleString(
-                        "id-ID"
-                      )}`}</td>
-                      <td className="px-1 py-1">{`Rp. ${item.subtotal?.toLocaleString(
-                        "id-ID"
-                      )}`}</td>
-                      <td className="px-1 py-1">{`Rp. ${item.modal?.toLocaleString(
-                        "id-ID"
-                      )}`}</td>
-                      <td className="px-1 py-1">{`Rp. ${item.keuntungan?.toLocaleString(
-                        "id-ID"
-                      )}`}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    sortedData.map((item, idx) => (
+                      <tr key={idx} className="bg-white border-b">
+                        <td className="px-1 py-1 text-center">{idx + 1}</td>
+                        <td className="px-1 py-1 capitalize">
+                          {item.nama_produk}
+                        </td>
+                        <td className="px-1 py-1 capitalize">{item.satuan}</td>
+                        <td className="px-1 py-1">{item.total_qty}</td>
+                        <td className="px-1 py-1">{`Rp. ${item.harga_beli?.toLocaleString(
+                          "id-ID"
+                        )}`}</td>
+                        <td className="px-1 py-1">{`Rp. ${item.harga_jual?.toLocaleString(
+                          "id-ID"
+                        )}`}</td>
+                        <td className="px-1 py-1">{`Rp. ${item.subtotal?.toLocaleString(
+                          "id-ID"
+                        )}`}</td>
+                        <td className="px-1 py-1">{`Rp. ${item.modal?.toLocaleString(
+                          "id-ID"
+                        )}`}</td>
+                        <td className="px-1 py-1">{`Rp. ${item.keuntungan?.toLocaleString(
+                          "id-ID"
+                        )}`}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
             {/* Total Keuntungan & Ringkasan */}
             <div className="mt-3 flex justify-end">
-              <table className="w-auto text-sm text-left font-bold text-[#1E686D]">
+              <table className="w-auto text-sm text-left">
                 <tbody>
                   <tr>
-                    <td className="pr-4">Total Jenis Produk Terjual</td>
+                    <td className="pr-4 font-semibold">
+                      Total Jenis Produk Terjual
+                    </td>
                     <td>: </td>
-                    <td>
+                    <td className="font-bold">
                       {sortedData.length === 0 ? (
-                        <span className="text-red-600 font-bold">-</span>
+                        <span className="text-red-600">-</span>
                       ) : (
                         sortedData.length
                       )}{" "}
@@ -578,14 +678,16 @@ const Laporan = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td className="pr-4">Total Banyak Produk Terjual</td>
+                    <td className="pr-4 font-semibold">
+                      Total Banyak Produk Terjual
+                    </td>
                     <td>: </td>
-                    <td>
+                    <td className="font-bold">
                       {sortedData.reduce(
                         (acc, item) => acc + (Number(item.total_qty) || 0),
                         0
                       ) === 0 ? (
-                        <span className="text-red-600 font-bold">-</span>
+                        <span className="text-red-600">-</span>
                       ) : (
                         sortedData.reduce(
                           (acc, item) => acc + (Number(item.total_qty) || 0),
@@ -596,14 +698,14 @@ const Laporan = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td className="pr-4">Total Keuntungan</td>
+                    <td className="pr-4 font-semibold">Total Keuntungan</td>
                     <td>: </td>
-                    <td>
+                    <td className="font-bold">
                       {sortedData.reduce(
                         (acc, item) => acc + (Number(item.keuntungan) || 0),
                         0
                       ) === 0 ? (
-                        <span className="text-red-600 font-bold">-</span>
+                        <span className="text-red-600">-</span>
                       ) : (
                         "Rp. " +
                         sortedData
@@ -622,9 +724,45 @@ const Laporan = () => {
         )}
         {activeTab === "transaksi" && (
           <div>
-            <div className="mb-2 font-semibold">
-              Laporan Transaksi Penjualan
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div>
+                <label className="block text-xs mb-1">Periode</label>
+                <select
+                  className="border rounded px-2 py-1 text-sm"
+                  value={filterPeriodeTransaksi}
+                  onChange={(e) => setFilterPeriodeTransaksi(e.target.value)}
+                >
+                  <option value="hari_ini, range">Hari Ini</option>
+                  <option value="minggu_ini, range">Minggu Ini</option>
+                  <option value="tahun_ini, range">Tahun Ini</option>
+                  <option value="range">Range Tanggal</option>
+                </select>
+              </div>
+
+              {filterPeriodeTransaksi.includes("range") && (
+                <>
+                  <div>
+                    <label className="block text-xs mb-1">Tanggal Awal</label>
+                    <input
+                      type="date"
+                      className="border rounded px-2 py-1 text-sm"
+                      value={tanggalAwalTransaksi}
+                      onChange={(e) => setTanggalAwalTransaksi(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1">Tanggal Akhir</label>
+                    <input
+                      type="date"
+                      className="border rounded px-2 py-1 text-sm"
+                      value={tanggalAkhirTransaksi}
+                      onChange={(e) => setTanggalAkhirTransaksi(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
+
             <div
               className="relative overflow-x-auto shadow-md sm:rounded-lg border border-[#1E686D]"
               style={{ maxHeight: "300px", overflowY: "auto" }}
@@ -660,7 +798,7 @@ const Laporan = () => {
                         <SortIcon active={sortBy === "tunai"} asc={sortAsc} />
                       </div>
                     </th>
-                    <th
+                    {/* <th
                       className="px-1 py-2 cursor-pointer select-none"
                       onClick={() => handleSort("kembalian")}
                     >
@@ -671,7 +809,7 @@ const Laporan = () => {
                           asc={sortAsc}
                         />
                       </div>
-                    </th>
+                    </th> */}
                     <th
                       className="px-1 py-2 cursor-pointer select-none"
                       onClick={() => handleSort("sisa_hutang")}
@@ -707,84 +845,96 @@ const Laporan = () => {
                     </th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {sortedData.map((item, idx) => (
-                    <tr key={idx} className="bg-white border-b">
-                      <td className="px-1 py-1 text-center">{idx + 1}</td>
-                      <td className="px-1 py-1">{item.tanggal}</td>
-                      <td className="px-1 py-1">
-                        {item.total === 0 ||
-                        item.total === "0" ||
-                        item.total === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.total).toLocaleString("id-ID")}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.tunai === 0 ||
-                        item.tunai === "0" ||
-                        item.tunai === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.tunai).toLocaleString("id-ID")}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.kembalian === 0 ||
-                        item.kembalian === "0" ||
-                        item.kembalian === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.kembalian).toLocaleString(
-                            "id-ID"
-                          )}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.sisa_hutang === 0 ||
-                        item.sisa_hutang === "0" ||
-                        item.sisa_hutang === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.sisa_hutang).toLocaleString(
-                            "id-ID"
-                          )}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.modal === 0 ||
-                        item.modal === "0" ||
-                        item.modal === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.modal).toLocaleString("id-ID")}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.keuntungan === 0 ||
-                        item.keuntungan === "0" ||
-                        item.keuntungan === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.keuntungan).toLocaleString(
-                            "id-ID"
-                          )}`
-                        )}
+                  {sortedData.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="text-center py-4 text-red-500 font-semibold"
+                      >
+                        Tidak ada data ditemukan
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    sortedData.map((item, idx) => (
+                      <tr key={idx} className="bg-white border-b">
+                        <td className="px-1 py-1 text-center">{idx + 1}</td>
+                        <td className="px-1 py-1">{item.tanggal}</td>
+                        <td className="px-1 py-1">
+                          {item.total === 0 ||
+                          item.total === "0" ||
+                          item.total === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.total).toLocaleString("id-ID")}`
+                          )}
+                        </td>
+                        <td className="px-1 py-1">
+                          {item.tunai === 0 ||
+                          item.tunai === "0" ||
+                          item.tunai === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.tunai).toLocaleString("id-ID")}`
+                          )}
+                        </td>
+                        {/* <td className="px-1 py-1">
+                          {item.kembalian === 0 ||
+                          item.kembalian === "0" ||
+                          item.kembalian === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.kembalian).toLocaleString(
+                              "id-ID"
+                            )}`
+                          )}
+                        </td> */}
+                        <td className="px-1 py-1">
+                          {item.sisa_hutang === 0 ||
+                          item.sisa_hutang === "0" ||
+                          item.sisa_hutang === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.sisa_hutang).toLocaleString(
+                              "id-ID"
+                            )}`
+                          )}
+                        </td>
+                        <td className="px-1 py-1">
+                          {item.modal === 0 ||
+                          item.modal === "0" ||
+                          item.modal === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.modal).toLocaleString("id-ID")}`
+                          )}
+                        </td>
+                        <td className="px-1 py-1">
+                          {item.keuntungan === 0 ||
+                          item.keuntungan === "0" ||
+                          item.keuntungan === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.keuntungan).toLocaleString(
+                              "id-ID"
+                            )}`
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
             {/* Total Transaksi, Hutang, Keuntungan */}
             <div className="mt-3 flex justify-end">
-              <table className="w-auto text-sm text-left font-bold text-[#1E686D]">
+              <table className="w-auto text-sm text-left">
                 <tbody>
                   <tr>
-                    <td className="pr-4">Total Transaksi</td>
+                    <td className="pr-4 font-semibold">Total Transaksi</td>
                     <td>:</td>
-                    <td>
+                    <td className="font-bold">
                       {"Rp. " +
                         sortedData
                           .reduce(
@@ -795,9 +945,9 @@ const Laporan = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td className="pr-4">Total Hutang</td>
+                    <td className="pr-4 font-semibold">Total Hutang</td>
                     <td>:</td>
-                    <td>
+                    <td className="font-bold">
                       {"Rp. " +
                         sortedData
                           .reduce(
@@ -809,9 +959,9 @@ const Laporan = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td className="pr-4">Total Keuntungan</td>
+                    <td className="pr-4 font-semibold">Total Keuntungan</td>
                     <td>:</td>
-                    <td>
+                    <td className="font-bold">
                       {"Rp. " +
                         sortedData
                           .reduce(
@@ -965,82 +1115,94 @@ const Laporan = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {sortedData.map((item, idx) => (
-                    <tr key={idx} className="bg-white border-b">
-                      <td className="px-1 py-1 text-center">{idx + 1}</td>
-                      <td className="px-1 py-1 capitalize">
-                        {item.nama_lokasi}
-                      </td>
-                      <td className="px-1 py-1">{item.nama_produk}</td>
-                      <td className="px-1 py-1">{item.satuan}</td>
 
-                      <td className="px-1 py-1">
-                        {item.harga_beli === 0 ||
-                        item.harga_beli === "0" ||
-                        item.harga_beli === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.harga_beli).toLocaleString(
-                            "id-ID"
-                          )}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.harga_jual === 0 ||
-                        item.harga_jual === "0" ||
-                        item.harga_jual === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.harga_jual).toLocaleString(
-                            "id-ID"
-                          )}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.sisa_stok === 0 ||
-                        item.sisa_stok === "0" ||
-                        item.sisa_stok === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          Number(item.sisa_stok).toLocaleString("id-ID")
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.nilai_modal === 0 ||
-                        item.nilai_modal === "0" ||
-                        item.nilai_modal === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.nilai_modal).toLocaleString(
-                            "id-ID"
-                          )}`
-                        )}
-                      </td>
-                      <td className="px-1 py-1">
-                        {item.potensi_keuntungan === 0 ||
-                        item.potensi_keuntungan === "0" ||
-                        item.potensi_keuntungan === null ? (
-                          <span className="text-red-600 font-bold">-</span>
-                        ) : (
-                          `Rp. ${Number(item.potensi_keuntungan).toLocaleString(
-                            "id-ID"
-                          )}`
-                        )}
+                <tbody>
+                  {sortedData.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        className="text-center py-4 text-red-500 font-semibold"
+                      >
+                        Tidak ada data ditemukan
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    sortedData.map((item, idx) => (
+                      <tr key={idx} className="bg-white border-b">
+                        <td className="px-1 py-1 text-center">{idx + 1}</td>
+                        <td className="px-1 py-1 capitalize">
+                          {item.nama_lokasi}
+                        </td>
+                        <td className="px-1 py-1">{item.nama_produk}</td>
+                        <td className="px-1 py-1">{item.satuan}</td>
+
+                        <td className="px-1 py-1">
+                          {item.harga_beli === 0 ||
+                          item.harga_beli === "0" ||
+                          item.harga_beli === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.harga_beli).toLocaleString(
+                              "id-ID"
+                            )}`
+                          )}
+                        </td>
+                        <td className="px-1 py-1">
+                          {item.harga_jual === 0 ||
+                          item.harga_jual === "0" ||
+                          item.harga_jual === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.harga_jual).toLocaleString(
+                              "id-ID"
+                            )}`
+                          )}
+                        </td>
+                        <td className="px-1 py-1">
+                          {item.sisa_stok === 0 ||
+                          item.sisa_stok === "0" ||
+                          item.sisa_stok === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            Number(item.sisa_stok).toLocaleString("id-ID")
+                          )}
+                        </td>
+                        <td className="px-1 py-1">
+                          {item.nilai_modal === 0 ||
+                          item.nilai_modal === "0" ||
+                          item.nilai_modal === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(item.nilai_modal).toLocaleString(
+                              "id-ID"
+                            )}`
+                          )}
+                        </td>
+                        <td className="px-1 py-1">
+                          {item.potensi_keuntungan === 0 ||
+                          item.potensi_keuntungan === "0" ||
+                          item.potensi_keuntungan === null ? (
+                            <span className="text-red-600 font-bold">-</span>
+                          ) : (
+                            `Rp. ${Number(
+                              item.potensi_keuntungan
+                            ).toLocaleString("id-ID")}`
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
             {/* Total Modal & Potensi Keuntungan */}
             <div className="mt-3 flex justify-end">
-              <table className="w-w-auto text-sm text-left font-bold text-[#1E686D]">
+              <table className="w-w-auto text-sm text-left">
                 <tbody>
                   <tr>
-                    <td className="pr-4">Total Modal</td>
+                    <td className="pr-4 font-semibold">Total Modal</td>
                     <td>:</td>
-                    <td>
+                    <td className="font-bold">
                       {"Rp. " +
                         sortedData
                           .reduce(
@@ -1052,9 +1214,11 @@ const Laporan = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td className="pr-4">Total Potensi Keuntungan</td>
+                    <td className="pr-4 font-semibold">
+                      Total Potensi Keuntungan
+                    </td>
                     <td>:</td>
-                    <td>
+                    <td className="font-bold">
                       {"Rp. " +
                         sortedData
                           .reduce(

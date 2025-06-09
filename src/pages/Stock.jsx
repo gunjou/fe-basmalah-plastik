@@ -9,9 +9,12 @@ const Stock = () => {
   const userLokasi = localStorage.getItem("id_lokasi");
 
   ///const [lokasiList, setLokasiList] = useState([]);
-  const [selectedLokasi, setSelectedLokasi] = useState(
-    role === "admin" ? "" : userLokasi
-  );
+  const [selectedLokasi, setSelectedLokasi] = useState(() => {
+    const role = localStorage.getItem("role");
+    const userLokasi = localStorage.getItem("id_lokasi");
+    if (role === "admin") return "1";
+    return userLokasi;
+  });
 
   useEffect(() => {
     if (role === "admin") {
@@ -85,9 +88,12 @@ const Stock = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     // Cek barcode sudah ada
-    const barcodeExists = data.some((item) => item.barcode === newItem.barcode);
+    const barcodeExists =
+      newItem.barcode.trim() !== "" &&
+      data.some((item) => item.barcode === newItem.barcode);
+
     if (barcodeExists) {
-      alert("Barcode sudah terdaftar, gunakan barcode lain!");
+      alert("Barcode sudah terdaftar, cek kembali produk Anda.");
       return;
     }
     try {
@@ -180,20 +186,28 @@ const Stock = () => {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
-    // Cek barcode sudah ada
-    const barcodeExists = data.some((item) => item.barcode === newItem.barcode);
-    if (barcodeExists) {
+
+    // Izinkan barcode kosong. Tapi jika diisi, pastikan unik.
+    const trimmedBarcode = newItem.barcode.trim();
+
+    if (
+      trimmedBarcode !== "" &&
+      data.some(
+        (item) => item.barcode && item.barcode.trim() === trimmedBarcode
+      )
+    ) {
       alert("Barcode sudah terdaftar, cek kembali produk Anda.");
       return;
     }
+
     try {
       await api.post(
         "/stok/",
         {
-          id_produk: null, // ID produk akan di-generate oleh API
+          id_produk: null,
           id_lokasi: Number(selectedLokasi || userLokasi),
           nama_produk: newItem.nama_produk,
-          barcode: newItem.barcode,
+          barcode: trimmedBarcode, // kirim yang sudah trim
           kategori: newItem.kategori,
           satuan: newItem.satuan,
           harga_beli: Number(newItem.harga_beli),
@@ -202,10 +216,9 @@ const Stock = () => {
         },
         { headers: getAuthHeaders() }
       );
-      // Refresh data produk setelah tambah
 
+      // Refresh data
       const lokasiId = role === "admin" ? selectedLokasi : userLokasi;
-
       const res = await api.get("/stok/", {
         headers: getAuthHeaders(),
         params: lokasiId ? { id_lokasi: lokasiId } : {},
@@ -400,21 +413,24 @@ const Stock = () => {
         keterangan: item.keterangan,
       }));
 
-      await api.post(
-        "/mutasi-stok/",
-        {
-          id_produk: Number(mutasiItems[0].id_produk),
-          id_lokasi_asal: Number(mutasiForm.id_lokasi_asal),
-          id_lokasi_tujuan: Number(mutasiForm.id_lokasi_tujuan),
-          qty: Number(mutasiItems[0].qty),
-          keterangan: mutasiItems[0].keterangan,
-        },
-        { headers: getAuthHeaders() }
-      );
+      for (const item of mutasiItems) {
+        await api.post(
+          "/mutasi-stok/",
+          {
+            id_produk: Number(item.id_produk),
+            id_lokasi_asal: Number(mutasiForm.id_lokasi_asal),
+            id_lokasi_tujuan: Number(mutasiForm.id_lokasi_tujuan),
+            qty: Number(item.qty),
+            keterangan: item.keterangan,
+          },
+          { headers: getAuthHeaders() }
+        );
+      }
 
       setMutasiItems([]);
       closeMutasiModal();
       alert("Mutasi berhasil dikirim!");
+      window.location.reload(); // Refresh halaman setelah mut
     } catch (err) {
       alert("Gagal melakukan mutasi stok.");
     }
@@ -439,10 +455,10 @@ const Stock = () => {
 
   // Fokus otomatis ke input scan saat komponen dirender
   useEffect(() => {
-    if (scanInputRef.current) {
+    if (!addModalOpen && !modalOpen && scanInputRef.current) {
       scanInputRef.current.focus();
     }
-  }, []);
+  }, [addModalOpen, modalOpen]);
 
   // Tambahkan efek agar input barcode pada modal tambah otomatis terisi saat addModalOpen dan newItem.barcode berubah
   useEffect(() => {
@@ -451,7 +467,7 @@ const Stock = () => {
       const barcodeInput = document.querySelector('input[name="barcode"]');
       if (barcodeInput) {
         barcodeInput.focus();
-        barcodeInput.select();
+        //barcodeInput.select();
       }
     }
   }, [addModalOpen, newItem.barcode]);
@@ -566,7 +582,7 @@ const Stock = () => {
 
         <div
           className="relative overflow-x-auto shadow-md sm:rounded-lg"
-          style={{ maxHeight: "300px", overflowY: "auto" }}
+          style={{ maxHeight: "200px", overflowY: "auto" }}
         >
           {loading ? (
             <div className="text-center py-8">Memuat data...</div>
@@ -832,7 +848,6 @@ const Stock = () => {
                   value={newItem.barcode}
                   onChange={handleAddChange}
                   className="border rounded px-2 py-1 w-full"
-                  required
                 />
               </div>
               <div>

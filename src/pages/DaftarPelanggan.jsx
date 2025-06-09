@@ -227,7 +227,7 @@ const DaftarPelanggan = () => {
 
         <div
           className="relative overflow-x-auto shadow-md sm:rounded-lg"
-          style={{ maxHeight: "300px", overflowY: "auto" }}
+          style={{ maxHeight: "280px", overflowY: "auto" }}
         >
           <table className="w-full text-sm text-left text-gray-500">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
@@ -241,6 +241,18 @@ const DaftarPelanggan = () => {
                     Nama
                     <SortIcon
                       active={sortBy === "nama_pelanggan"}
+                      asc={sortAsc}
+                    />
+                  </div>
+                </th>
+                <th
+                  className="px-1 py-2 cursor-pointer select-none"
+                  onClick={() => handleSort("id_pelanggan")}
+                >
+                  <div className="flex items-center">
+                    Id Pelanggan
+                    <SortIcon
+                      active={sortBy === "id_pelanggan"}
                       asc={sortAsc}
                     />
                   </div>
@@ -274,6 +286,7 @@ const DaftarPelanggan = () => {
                   <td className="px-1 py-1 capitalize">
                     {item.nama_pelanggan}
                   </td>
+                  <td className="px-1 py-1 capitalize">{item.id_pelanggan}</td>
                   <td className="px-1 py-1">{item.kontak || "-"}</td>
                   {/* <td className="px-1 py-1">{item.alamat}</td> */}
                   <td className="px-1 py-1">

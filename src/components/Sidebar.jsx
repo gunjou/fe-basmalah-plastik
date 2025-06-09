@@ -11,6 +11,7 @@ import {
   BadgeInfo,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import api from "../utils/api";
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const role = localStorage.getItem("role");
@@ -28,6 +29,26 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       : []),
     { name: "Tentang", icon: <BadgeInfo size={18} />, path: "/tentang" },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await api.post(
+        "/auth/logout",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      localStorage.clear();
+      window.location.href = "/login"; // Full reload untuk reset state
+    } catch (err) {
+      console.error("Logout failed:", err);
+      alert("Logout failed. Please try again.");
+    }
+  };
 
   return (
     <div
@@ -71,8 +92,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       </div>
 
       {/* Logout */}
-      <div className="p-4 border-t border-gray-700">
-        <button className="flex text-bold items-center gap-2 w-full text-left text-sm hover:text-red-400">
+      <div className="p-4 border-t border-white">
+        <button
+          className="flex text-bold items-center gap-2 w-full text-left text-sm hover:text-green-400"
+          onClick={() => {
+            const confirmLogout = window.confirm("Anda yakin ingin logout?");
+            if (confirmLogout) {
+              console.log("User confirmed logout");
+              handleLogout(); // Call handleLogout when confirmed
+            }
+          }}
+        >
           <LogOut size={18} />
           {isOpen && <span>Logout</span>}
         </button>

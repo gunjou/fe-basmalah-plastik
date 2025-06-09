@@ -65,7 +65,7 @@ function Login() {
             <span>Login untuk menggunakan aplikasi</span>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Username
@@ -87,7 +87,7 @@ function Login() {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="masukkan password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
@@ -115,10 +115,9 @@ function Login() {
                 Lupa password?
               </a>
             </div> */}
-
             <button
               type="submit"
-              className="w-full px-4 py-2 text-white rounded-lg bg-[#1E686D] rounded-[15px] hover:bg-[#72BDAF] transition"
+              className="w-full px-4 py-2 mt-5 text-white rounded-lg bg-[#1E686D] rounded-[15px] hover:bg-[#72BDAF] transition"
               disabled={loading}
             >
               {loading ? "Memproses..." : "Login"}
