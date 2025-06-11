@@ -41,11 +41,15 @@ const Navbar = ({ isSidebarOpen }) => {
       </h2>
 
       <div className="flex items-center gap-4">
-        <img
+        {/* <img
           src="https://i.pravatar.cc/40"
           alt="avatar"
           className="w-8 h-8 rounded-full"
-        />
+        /> */}
+        <div className="w-8 h-8 rounded-full bg-[#1E686D] flex items-center justify-center text-white font-bold">
+          {user.nama.charAt(0).toUpperCase()}
+        </div>
+
         <div className="flex flex-col">
           <span className="text-sm text-gray-600 capitalize">{user.nama}</span>
           <span className="text-xs text-gray-400 -mt-1 capitalize">

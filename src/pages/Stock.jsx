@@ -3,8 +3,122 @@ import { CiCirclePlus } from "react-icons/ci";
 import { IoQrCodeOutline, IoClose } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import { FaExchangeAlt, FaEdit, FaTrash, FaBarcode } from "react-icons/fa";
 
 const Stock = () => {
+  const handlePrintSelected = () => {
+    if (selectedToPrint.length === 0) {
+      alert("Pilih setidaknya 1 produk untuk dicetak.");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Pop-up diblokir. Izinkan pop-up di browser Anda.");
+      return;
+    }
+
+    const html = `
+    <html>
+    <head>
+      <title>Cetak Barcode</title>
+      <style>
+        @media print {
+          body {
+            margin: 0;
+            padding: 0;
+            width: 58mm;
+          }
+        }
+
+        body {
+          font-family: sans-serif;
+          padding: 4px;
+          width: 58mm;
+        }
+
+        .barcode-item {
+  text-align: center;
+  margin-bottom: 6px;
+  font-size: 11px;
+  border: 1px dashed #000;
+  padding: 6px 2px;
+  border-radius: 4px;
+}
+
+
+        svg {
+          width: 200px;
+          height: 40px;
+        }
+
+        .harga {
+          font-size: 11px;
+          margin-top: 2px;
+        }
+
+        .nama {
+          font-size: 11px;
+          font-weight: bold;
+          margin-bottom: 2px;
+        }
+      </style>
+    </head>
+    <body>
+      ${selectedToPrint
+        .map((item) =>
+          Array.from({ length: Number(item.jumlah) })
+            .map(
+              () => `
+              <div class="barcode-item">
+                <div class="nama">${item.nama_produk
+                  .toLowerCase()
+                  .replace(/(^|\s)\S/g, (l) => l.toUpperCase())}</div>
+                <svg class="barcode" data-code="${item.barcode}"></svg>
+                <div class="harga">Rp ${Number(item.harga_jual).toLocaleString(
+                  "id-ID"
+                )}</div>
+              </div>
+            `
+            )
+            .join("")
+        )
+        .join("")}
+
+      <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+      <script>
+        window.onload = function() {
+          document.querySelectorAll('svg.barcode').forEach(svg => {
+            JsBarcode(svg, svg.dataset.code, {
+              format: "CODE128",
+              displayValue: false,
+              width: 1.5,
+              height: 40
+            });
+          });
+          setTimeout(() => window.print(), 500);
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const [selectedToPrint, setSelectedToPrint] = useState([]);
+
+  const handleCheckboxChange = (item) => {
+    setSelectedToPrint((prev) => {
+      const exists = prev.find((p) => p.id_stok === item.id_stok);
+      if (exists) return prev.filter((p) => p.id_stok !== item.id_stok);
+      return [...prev, item];
+    });
+  };
+
+  // localStorage.clear();
   const role = localStorage.getItem("role");
   const userLokasi = localStorage.getItem("id_lokasi");
 
@@ -33,7 +147,7 @@ const Stock = () => {
 
   const [readOnly, setReadOnly] = useState(false);
 
-  const [sortBy, setSortBy] = useState("nama_produk"); // Default sort by nama_produk
+  const [sortBy, setSortBy] = useState("stok"); // Default sort by nama_produk
   const [sortAsc, setSortAsc] = useState(true);
 
   const getAuthHeaders = () => {
@@ -282,7 +396,15 @@ const Stock = () => {
     }
   }, [mutasiModalOpen]);
 
-  const openMutasiModal = () => setMutasiModalOpen(true);
+  const openMutasiModal = () => {
+    const currentLokasi = role === "admin" ? selectedLokasi : userLokasi;
+    setMutasiForm((prev) => ({
+      ...prev,
+      id_lokasi_asal: currentLokasi || "", // otomatis isi lokasi asal
+    }));
+    setMutasiModalOpen(true);
+  };
+
   const closeMutasiModal = () => setMutasiModalOpen(false);
 
   const handleMutasiChange = (e) => {
@@ -683,24 +805,36 @@ const Stock = () => {
                           <button
                             className="bg-[#1E686D] hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
                             onClick={() => handleAddToMutasi(item)}
+                            title="Mutasi"
                           >
-                            Mutasi
+                            <FaExchangeAlt />
                           </button>
                         )}
                         <button
                           className="ml-1 bg-green-500 hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
                           onClick={() => openEditModal(item)}
+                          title="Edit"
                         >
-                          Edit
+                          <FaEdit />
                         </button>
                         {!readOnly && (
                           <button
                             className="ml-1 bg-red-600 hover:bg-red-700 text-white px-1 py-1 rounded-[10px] text-xs"
                             onClick={() => handleDelete(item)}
+                            title="Hapus"
                           >
-                            Hapus
+                            <FaTrash />
                           </button>
                         )}
+                        <input
+                          type="checkbox"
+                          className="ml-1 mr-1"
+                          checked={selectedToPrint.some(
+                            (x) => x.id_stok === item.id_stok
+                          )}
+                          onChange={() => handleCheckboxChange(item)}
+                        />
+                        Cetak
                       </td>
                     </tr>
                   ))
@@ -726,6 +860,12 @@ const Stock = () => {
                 Lihat Data Mutasi
               </button>
             )}
+            <button
+              className="bg-blue-600 text-white px-4 py-1 rounded-[10px] text-sm hover:bg-blue-700"
+              onClick={handlePrintSelected}
+            >
+              Cetak Barcode (Produk Dipilih)
+            </button>
           </div>
         </div>
         <div className="bg-white border border-[#1E686D] rounded-lg p-2 shadow-md mt-4">

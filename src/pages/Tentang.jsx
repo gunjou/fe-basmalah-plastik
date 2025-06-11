@@ -1,5 +1,6 @@
 import React from "react";
 import { SiGmail } from "react-icons/si";
+import { FiMail } from "react-icons/fi";
 import { FaFacebook, FaTwitter, FaInstagram, FaWhatsapp } from "react-icons/fa";
 
 const Tentang = () => {
@@ -28,7 +29,7 @@ const Tentang = () => {
             href="https://wa.me/6281917250391"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-black hover:text-green-500"
+            className="text-green-500"
           >
             <FaWhatsapp size={25} />
           </a>
@@ -36,15 +37,15 @@ const Tentang = () => {
             href="https://mail.google.com/mail/?view=cm&fs=1&to=outlookest2019@gmail.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-black hover:text-red-400"
+            className="text-red-500"
           >
-            <SiGmail size={25} />
+            <FiMail size={25} />
           </a>
           <a
             href="https://www.instagram.com/outlookofficial_/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-black hover:text-pink-500 mb-3"
+            className="text-pink-500 mb-3"
           >
             <FaInstagram size={25} />
           </a>

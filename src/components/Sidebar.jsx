@@ -99,7 +99,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             const confirmLogout = window.confirm("Anda yakin ingin logout?");
             if (confirmLogout) {
               console.log("User confirmed logout");
-              handleLogout(); // Call handleLogout when confirmed
+              localStorage.clear();
+              //handleLogout(); // Call handleLogout when confirmed
             }
           }}
         >

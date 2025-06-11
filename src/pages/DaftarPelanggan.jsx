@@ -403,7 +403,6 @@ const DaftarPelanggan = () => {
                   value={editItem.kontak}
                   onChange={handleEditChange}
                   className="border rounded px-2 py-1 w-full"
-                  required
                 />
               </div>
               {/* <div>
