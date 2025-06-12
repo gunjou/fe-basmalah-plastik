@@ -24,7 +24,7 @@ const Navbar = ({ isSidebarOpen }) => {
         }
       );
       localStorage.clear();
-      window.location.href = "/login"; // Full reload untuk reset state
+      window.location.replace("/login");
     } catch (err) {
       console.error("Logout failed:", err);
       alert("Logout failed. Please try again.");

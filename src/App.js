@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
+
+import { jwtDecode } from "jwt-decode";
 
 import Kasir from "./pages/Kasir";
 import Stock from "./pages/Stock";
@@ -21,6 +23,48 @@ import ProtectedRoute from "./components/ProtectedRoute";
 function App() {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
+
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const res = await fetch("/version.json");
+        const serverVersion = (await res.json()).version;
+        const localVersion = localStorage.getItem("app_version");
+
+        if (localVersion && localVersion !== serverVersion) {
+          localStorage.clear(); // opsional
+          window.location.reload(true); // reload paksa
+        }
+
+        localStorage.setItem("app_version", serverVersion);
+      } catch (error) {
+        console.error("Gagal cek versi:", error);
+      }
+    };
+
+    checkVersion();
+  }, []);
+
+  // Validasi token kadaluarsa saat load pertama
+  useEffect(() => {
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        const now = Date.now() / 1000;
+
+        if (decoded.exp < now) {
+          console.log("Token expired, force logout");
+          localStorage.clear();
+          window.location.replace("/login");
+        }
+      } catch (err) {
+        console.log("Invalid token, force logout");
+        localStorage.clear();
+        window.location.replace("/login");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Router>

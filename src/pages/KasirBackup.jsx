@@ -280,7 +280,7 @@ const Kasir = () => {
       // Tunggu render struk, lalu cetak otomatis
       setTimeout(() => {
         // window.print();
-        console.log(strukRef.current);
+        // console.log(strukRef.current);
         handlePrintStruk();
       }, 300);
     } catch (err) {

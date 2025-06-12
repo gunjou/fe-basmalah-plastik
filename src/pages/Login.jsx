@@ -30,7 +30,7 @@ function Login() {
         if (data.user) {
           localStorage.setItem("user", JSON.stringify(data.user));
         }
-        console.log("res.data dari login:", res.data);
+        // console.log("res.data dari login:", res.data);
 
         // Redirect sesuai role
         if (data.role === "admin") {
@@ -117,7 +117,7 @@ function Login() {
             </div> */}
             <button
               type="submit"
-              className="w-full px-4 py-2 mt-5 text-white rounded-lg bg-[#1E686D] rounded-[15px] hover:bg-[#72BDAF] transition"
+              className="w-full px-4 py-2 mt-8 text-white rounded-lg bg-[#1E686D] rounded-[15px] hover:bg-[#72BDAF] transition"
               disabled={loading}
             >
               {loading ? "Memproses..." : "Login"}

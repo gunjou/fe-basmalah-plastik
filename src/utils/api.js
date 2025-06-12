@@ -3,7 +3,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "https://api.basmalahplastik.shop", // Ganti ke baseURL API production
-  // baseURL: "http://127.0.0.1:5000"
+  // baseURL: "http://127.0.0.1:5000",
   headers: { "Content-Type": "application/json" },
 });
 
@@ -33,16 +33,8 @@ api.interceptors.response.use(
 
       if (message === "Token expired, Login ulang") {
         alert("Sesi Anda telah berakhir. Silakan login ulang.");
-
-        localStorage.removeItem("token");
-        // localStorage.removeItem("id_karyawan");
-        // localStorage.removeItem("id_admin");
-        // localStorage.removeItem("nama");
-        // localStorage.removeItem("role");
-        // localStorage.removeItem("jenis");
-        // localStorage.removeItem("avatarColor");
-
-        window.location.href = "/login";
+        localStorage.clear();
+        window.location.replace("/login");
       }
     }
     return Promise.reject(error);
