@@ -19,6 +19,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let isLogoutTriggered = false;
 // Interceptor response: handle error 401
 api.interceptors.response.use(
   (response) => response,
@@ -27,14 +28,16 @@ api.interceptors.response.use(
       const message = error.response?.data?.status;
 
       if (message === "Invalid username or password") {
-        // Biarkan ditangani oleh komponen yang melakukan login (jangan handle di interceptor)
         return Promise.reject(error);
       }
 
       if (message === "Token expired, Login ulang") {
-        alert("Sesi Anda telah berakhir. Silakan login ulang.");
-        localStorage.clear();
-        window.location.replace("/login");
+        if (!isLogoutTriggered) {
+          isLogoutTriggered = true; // Set flag agar tidak berulang
+          alert("Sesi Anda telah berakhir. Silakan login ulang.");
+          localStorage.clear();
+          window.location.replace("/login");
+        }
       }
     }
     return Promise.reject(error);
