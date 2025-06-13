@@ -81,7 +81,7 @@ function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mt-2 mb-1">
                 Password
               </label>
               <div className="relative">
@@ -126,7 +126,12 @@ function Login() {
 
           <p className="mt-6 text-center text-sm text-gray-600">
             © 2025,{" "}
-            <a href="#" className="text-purple-500">
+            <a
+              href="https://www.instagram.com/outlookofficial_/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-500"
+            >
               Outlook Project
             </a>
           </p>

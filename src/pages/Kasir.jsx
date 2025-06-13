@@ -413,6 +413,65 @@ const Kasir = () => {
     }
   };
 
+  const handleSubmitTanpaCetakStruk = async () => {
+    const id_kasir = Number(localStorage.getItem("id_kasir"));
+    const id_lokasi = Number(localStorage.getItem("id_lokasi"));
+
+    if (dataPembelian.length === 0) {
+      showAlert("error", "Tidak ada produk yang dibeli.");
+      return;
+    }
+
+    if (bayarNominal <= 0 || kembalian < 0) {
+      if (!newItem.nama_pelanggan || newItem.nama_pelanggan.trim() === "") {
+        showAlert("error", "Jika hutang pelanggan wajib diisi.");
+        return;
+      }
+    }
+
+    try {
+      const payload = {
+        id_kasir,
+        id_lokasi,
+        id_pelanggan: Number(newItem.id_pelanggan) || null,
+        nama_pelanggan: newItem.nama_pelanggan || "",
+        kontak: newItem.kontak || "",
+        total: Math.round(total),
+        tunai: Math.round(bayarNominal),
+        kembalian: Math.max(0, Math.round(kembalian)),
+        items: dataPembelian.map((item) => ({
+          id_produk: Number(item.id_produk),
+          qty: Number(item.qty),
+          harga_jual: Number(item.harga_jual),
+        })),
+      };
+
+      if (payload.items.some((i) => !i.id_produk && i.id_produk !== 0)) {
+        showAlert("error", "Ada produk dengan ID tidak valid.");
+        return;
+      }
+
+      await api.post("/transaksi/", payload, {
+        headers: getAuthHeaders(),
+      });
+
+      showAlert("success", "Transaksi berhasil disimpan!");
+
+      setDataPembelian([]);
+      setBayar("");
+      setBayarNominal(0);
+      setDiskonValue("");
+      setNewItem({ nama_pelanggan: "" });
+    } catch (err) {
+      console.error(err);
+      showAlert(
+        "error",
+        "Gagal menyimpan transaksi:\n" +
+          (err.response?.data?.detail || err.message)
+      );
+    }
+  };
+
   const scanInputRef = useRef(null);
 
   // Fokus otomatis ke input scan saat komponen dirender
@@ -670,6 +729,15 @@ const Kasir = () => {
               </div>
             ) : (
               <table className="w-full text-sm text-left text-gray-500">
+                <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-0.5 py-1 text-left">Produk</th>
+                    <th className="px-0.5 py-1 text-left">Qty</th>
+                    <th className="px-0.5 py-1 text-left">Satuan</th>
+                    <th className="px-0.5 py-1 text-left">Harga</th>
+                    <th className="px-0.5 py-1 text-left">Aksi</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {dataPembelian.map((item, id_produk) => (
                     <tr key={id_produk} className="bg-gray-200">
@@ -716,7 +784,7 @@ const Kasir = () => {
           <div className="flex flex-col md:flex-row gap-8 justify-between mt-2">
             <div className="space-y-4 w-full md:w-1/2 pr-4">
               <div className="flex justify-between">
-                <label className="text-sm text-gray-700 pr-2">Sub Total</label>
+                <label className="text-sm text-gray-700 pr-2">SubTotal</label>
                 <input
                   type="text"
                   value={`Rp. ${subtotal.toLocaleString("id-ID")}`}
@@ -773,12 +841,42 @@ const Kasir = () => {
                 />
               </div>
 
-              <div className="flex justify-between">
+              {/* <div className="flex justify-between">
                 <label className="text-sm text-gray-700 pr-2">Kembalian</label>
                 <input
                   type="text"
-                  value={`Rp. ${kembalian.toLocaleString("id-ID")}`}
-                  className="text-sm text-end text-red-700 border rounded-lg px-2 w-40"
+                  value={
+                    kembalian < 0
+                      ? `Hutang: Rp. ${Math.abs(kembalian).toLocaleString(
+                          "id-ID"
+                        )}`
+                      : `Kembali: Rp. ${kembalian.toLocaleString("id-ID")}`
+                  }
+                  className={`text-sm text-end border rounded-lg px-2 w-40 ${
+                    kembalian < 0 ? "text-red-700" : "text-green-700"
+                  }`}
+                  readOnly
+                />
+
+                       </div> */}
+              <div className="flex justify-between">
+                <label
+                  className={`text-sm pr-2 font-semibold ${
+                    kembalian < 0 ? "text-red-700" : "text-green-700"
+                  }`}
+                >
+                  {kembalian < 0 ? "Hutang" : "Kembalian"}
+                </label>
+                <input
+                  type="text"
+                  value={
+                    kembalian < 0
+                      ? `Rp. ${Math.abs(kembalian).toLocaleString("id-ID")}`
+                      : `Rp. ${kembalian.toLocaleString("id-ID")}`
+                  }
+                  className={`text-sm text-end border rounded-lg px-2 w-40 ${
+                    kembalian < 0 ? "text-red-700" : "text-green-700"
+                  }`}
                   readOnly
                 />
               </div>
@@ -819,13 +917,20 @@ const Kasir = () => {
                 </div>
               </div>
 
-              <div className="text-center pt-2 ">
+              <div className="text-center mt-1 space-x-2">
+                <button
+                  className="bg-gray-600 text-sm text-white px-4 py-2 rounded-[10px] w-full md:w-auto transition duration-300 ease-in-out transform hover:bg-gray-700 hover:scale-105 hover:shadow-lg"
+                  type="button"
+                  onClick={handleSubmitTanpaCetakStruk}
+                >
+                  Simpan
+                </button>
                 <button
                   className="bg-black text-sm text-white px-4 py-2 rounded-[10px] w-full md:w-auto transition duration-300 ease-in-out transform hover:bg-gray-800 hover:scale-105 hover:shadow-lg"
                   type="button"
                   onClick={handleSubmitTransaksi}
                 >
-                  Cetak Struk
+                  Simpan & Cetak
                 </button>
               </div>
             </div>

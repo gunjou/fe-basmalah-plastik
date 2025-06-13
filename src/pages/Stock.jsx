@@ -12,6 +12,15 @@ const Stock = () => {
       return;
     }
 
+    const invalid = selectedToPrint.some(
+      (item) => !item.jumlah || isNaN(item.jumlah) || item.jumlah <= 0
+    );
+
+    if (invalid) {
+      alert("Isi jumlah cetak yang valid untuk semua produk yang dipilih.");
+      return;
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       alert("Pop-up diblokir. Izinkan pop-up di browser Anda.");
@@ -114,7 +123,7 @@ const Stock = () => {
     setSelectedToPrint((prev) => {
       const exists = prev.find((p) => p.id_stok === item.id_stok);
       if (exists) return prev.filter((p) => p.id_stok !== item.id_stok);
-      return [...prev, item];
+      return [...prev, { ...item, jumlah: "" }];
     });
   };
 
@@ -714,9 +723,9 @@ const Stock = () => {
             <table className="w-full text-sm text-left text-gray-500">
               <thead className="text-xs text-gray-700 uppercase bg-gray-50 z-50 sticky top-0">
                 <tr>
-                  <th className="px-0.5 py-2 text-center">No</th>
+                  <th className="px-0.5 py-0.5 text-center">No</th>
                   <th
-                    className="px-1 py-2 cursor-pointer select-none"
+                    className="px-0.5 py-0.5 cursor-pointer select-none"
                     onClick={() => handleSort("barcode")}
                   >
                     <div className="flex items-center">
@@ -725,7 +734,7 @@ const Stock = () => {
                     </div>
                   </th>
                   <th
-                    className="px-1 py-2 cursor-pointer select-none"
+                    className="px-0.5 py-0.5 cursor-pointer select-none"
                     onClick={() => handleSort("nama_produk")}
                   >
                     <div className="flex items-center">
@@ -736,14 +745,14 @@ const Stock = () => {
                       />
                     </div>
                   </th>
-                  <th className="px-1 py-2">Kategori</th>
-                  <th className="px-1 py-2">Satuan</th>
+                  <th className="px-0.5 py-0.5">Kategori</th>
+                  <th className="px-0.5 py-0.5">Satuan</th>
                   <th
-                    className="px-1 py-2 cursor-pointer select-none"
+                    className="px-0.5 py-0.5 cursor-pointer select-none"
                     onClick={() => handleSort("harga_beli")}
                   >
                     <div className="flex items-center">
-                      Harga Beli
+                      Beli
                       <SortIcon
                         active={sortBy === "harga_beli"}
                         asc={sortAsc}
@@ -751,11 +760,11 @@ const Stock = () => {
                     </div>
                   </th>
                   <th
-                    className="px-1 py-2 cursor-pointer select-none"
+                    className="px-1 py-0.5 cursor-pointer select-none"
                     onClick={() => handleSort("harga_jual")}
                   >
                     <div className="flex items-center">
-                      Harga Jual
+                      Jual
                       <SortIcon
                         active={sortBy === "harga_jual"}
                         asc={sortAsc}
@@ -763,7 +772,7 @@ const Stock = () => {
                     </div>
                   </th>
                   <th
-                    className="px-1 py-2 cursor-pointer select-none"
+                    className="px-1 py-0.5 cursor-pointer select-none"
                     onClick={() => handleSort("jumlah")}
                   >
                     <div className="flex items-center">
@@ -771,7 +780,8 @@ const Stock = () => {
                       <SortIcon active={sortBy === "jumlah"} asc={sortAsc} />
                     </div>
                   </th>
-                  <th className="px-1 py-2">Action</th>
+                  <th className="px-0.5 py-0.5 text-center">Action</th>
+                  <th className="px-0.5 py-0.5 text-center">Cetak</th>
                 </tr>
               </thead>
               <tbody>
@@ -784,23 +794,29 @@ const Stock = () => {
                 ) : (
                   filteredData.map((item, idx) => (
                     <tr key={item.id || idx} className="bg-white border-b">
-                      <td className="px-1 py-1 text-center">{idx + 1}</td>
-                      <td className="px-1 py-1">{item.barcode}</td>
-                      <td className="px-1 py-1 capitalize">
+                      <td className="px-0.5 py-0.5 text-center">{idx + 1}</td>
+                      <td className="px-0.5 py-0.5">{item.barcode}</td>
+                      <td className="px-0.5 py-0.5 capitalize">
                         {item.nama_produk}
                       </td>
-                      <td className="px-1 py-1 capitalize">{item.kategori}</td>
-                      <td className="px-1 py-1 capitalize">{item.satuan}</td>
+                      <td className="px-0.5 py-0.5 capitalize">
+                        {item.kategori}
+                      </td>
+                      <td className="px-0.5 py-0.5 capitalize text-center">
+                        {item.satuan}
+                      </td>
                       <td className="px-1 py-1">
                         Rp.
                         {Number(item.harga_beli).toLocaleString("id-ID")}
                       </td>
-                      <td className="px-1 py-1">
+                      <td className="px-0.5 py-0.5">
                         Rp.
                         {Number(item.harga_jual).toLocaleString("id-ID")}
                       </td>
-                      <td className="px-1 py-1">{item.jumlah}</td>
-                      <td className="px-1 py-1">
+                      <td className="px-0.5 py-0.5 text-center">
+                        {item.jumlah}
+                      </td>
+                      <td className="px-0.5 py-0.5">
                         {!readOnly && (
                           <button
                             className="bg-[#1E686D] hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
@@ -826,6 +842,8 @@ const Stock = () => {
                             <FaTrash />
                           </button>
                         )}
+                      </td>
+                      <td className="px-0.5 py-0.5">
                         <input
                           type="checkbox"
                           className="ml-1 mr-1"
@@ -834,7 +852,32 @@ const Stock = () => {
                           )}
                           onChange={() => handleCheckboxChange(item)}
                         />
-                        Cetak
+
+                        {selectedToPrint.find(
+                          (x) => x.id_stok === item.id_stok
+                        ) && (
+                          <input
+                            type="number"
+                            min="1"
+                            value={
+                              selectedToPrint.find(
+                                (x) => x.id_stok === item.id_stok
+                              )?.jumlah ?? ""
+                            }
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setSelectedToPrint((prev) =>
+                                prev.map((x) =>
+                                  x.id_stok === item.id_stok
+                                    ? { ...x, jumlah: value }
+                                    : x
+                                )
+                              );
+                            }}
+                            className="w-12 text-xs border rounded px-1"
+                            placeholder="Qty"
+                          />
+                        )}
                       </td>
                     </tr>
                   ))
