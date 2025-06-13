@@ -8,6 +8,8 @@ import {
 
 import { jwtDecode } from "jwt-decode";
 
+import checkAppVersion from "./utils/check_version";
+
 import Kasir from "./pages/Kasir";
 import Stock from "./pages/Stock";
 import DaftarPelanggan from "./pages/DaftarPelanggan";
@@ -23,27 +25,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 function App() {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
-
-  useEffect(() => {
-    const checkVersion = async () => {
-      try {
-        const res = await fetch("/version.json");
-        const serverVersion = (await res.json()).version;
-        const localVersion = localStorage.getItem("app_version");
-
-        if (localVersion && localVersion !== serverVersion) {
-          localStorage.clear(); // opsional
-          window.location.reload(true); // reload paksa
-        }
-
-        localStorage.setItem("app_version", serverVersion);
-      } catch (error) {
-        console.error("Gagal cek versi:", error);
-      }
-    };
-
-    checkVersion();
-  }, []);
 
   // Validasi token kadaluarsa saat load pertama
   useEffect(() => {
@@ -63,6 +44,7 @@ function App() {
         window.location.replace("/login");
       }
     }
+    checkAppVersion();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
