@@ -19,7 +19,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-let isLogoutTriggered = false;
 // Interceptor response: handle error 401
 api.interceptors.response.use(
   (response) => response,
@@ -31,6 +30,7 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      let isLogoutTriggered = false;
       if (message === "Token expired, Login ulang") {
         if (!isLogoutTriggered) {
           isLogoutTriggered = true; // Set flag agar tidak berulang
