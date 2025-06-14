@@ -335,9 +335,11 @@ const Laporan = () => {
         { header: "No", dataKey: "no" },
         { header: "Nama Produk", dataKey: "nama_produk" },
         { header: "Satuan", dataKey: "satuan" },
+        { header: "Expired", dataKey: "expired_date" },
         { header: "Lokasi", dataKey: "nama_lokasi" },
         { header: "Harga Beli", dataKey: "harga_beli" },
         { header: "Harga Jual", dataKey: "harga_jual" },
+        { header: "Stok Optimal", dataKey: "stok_optimal" },
         { header: "Sisa Stok", dataKey: "sisa_stok" },
         { header: "Nilai Modal", dataKey: "nilai_modal" },
         { header: "Potensi Keuntungan", dataKey: "potensi_keuntungan" },
@@ -346,11 +348,15 @@ const Laporan = () => {
         no: idx + 1,
         nama_produk: item.nama_produk,
         satuan: item.satuan,
+        expired_date: item.expired_date,
         nama_lokasi: item.nama_lokasi,
         harga_beli: `Rp. ${Number(item.harga_beli || 0).toLocaleString(
           "id-ID"
         )}`,
         harga_jual: `Rp. ${Number(item.harga_jual || 0).toLocaleString(
+          "id-ID"
+        )}`,
+        stok_optimal: `${Number(item.stok_optimal || 0).toLocaleString(
           "id-ID"
         )}`,
         sisa_stok: `${Number(item.sisa_stok || 0).toLocaleString("id-ID")}`,
@@ -1109,8 +1115,20 @@ const Laporan = () => {
                       onClick={() => handleSort("satuan")}
                     >
                       <div className="flex items-center">
-                        satuan
+                        Satuan
                         <SortIcon active={sortBy === "satuan"} asc={sortAsc} />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("expired_date")}
+                    >
+                      <div className="flex items-center">
+                        Expired
+                        <SortIcon
+                          active={sortBy === "expired_date"}
+                          asc={sortAsc}
+                        />
                       </div>
                     </th>
                     <th
@@ -1133,6 +1151,18 @@ const Laporan = () => {
                         Harga Jual
                         <SortIcon
                           active={sortBy === "harga_jual"}
+                          asc={sortAsc}
+                        />
+                      </div>
+                    </th>
+                    <th
+                      className="px-1 py-2 cursor-pointer select-none"
+                      onClick={() => handleSort("stok_optimal")}
+                    >
+                      <div className="flex items-center">
+                        Stok Optimal
+                        <SortIcon
+                          active={sortBy === "stok_optimal"}
                           asc={sortAsc}
                         />
                       </div>
@@ -1195,7 +1225,18 @@ const Laporan = () => {
                         </td>
                         <td className="px-1 py-1">{item.nama_produk}</td>
                         <td className="px-1 py-1">{item.satuan}</td>
-
+                        <td className="px-1 py-1">
+                          {item.expired_date
+                            ? new Date(item.expired_date).toLocaleDateString(
+                                "id-ID",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "2-digit",
+                                }
+                              )
+                            : "-"}
+                        </td>
                         <td className="px-1 py-1">
                           {item.harga_beli === 0 ||
                           item.harga_beli === "0" ||
@@ -1218,6 +1259,8 @@ const Laporan = () => {
                             )}`
                           )}
                         </td>
+                        <td className="px-1 py-1">{item.stok_optimal}</td>
+
                         <td className="px-1 py-1">
                           {item.sisa_stok === 0 ||
                           item.sisa_stok === "0" ||

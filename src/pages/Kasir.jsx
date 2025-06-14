@@ -28,6 +28,9 @@ const getAuthHeaders = () => {
 const Kasir = () => {
   const getUserRole = () => localStorage.getItem("role"); // "admin" atau "kasir"
   const getUserLokasi = () => localStorage.getItem("id_lokasi");
+  const [totalHutangPelanggan, setTotalHutangPelanggan] = useState(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   //const [lokasiList, setLokasiList] = useState([]);
   const [selectedLokasi, setSelectedLokasi] = useState(getUserLokasi());
@@ -43,7 +46,7 @@ const Kasir = () => {
 
   const strukRef = useRef(null);
   const handlePrintStruk = () => {
-    const printContents = strukRef.current.innerHTML;
+    let printContents = strukRef.current.innerHTML;
     const printWindow = window.open("", "", "width=300,height=600");
     const logoBase64 = "images/icon-outlook.svg"; // base64 logo
     const nomorTransaksi = "TRX-" + Date.now();
@@ -351,6 +354,8 @@ const Kasir = () => {
   };
 
   const handleSubmitTransaksi = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const id_kasir = Number(localStorage.getItem("id_kasir"));
     const id_lokasi = Number(localStorage.getItem("id_lokasi"));
 
@@ -394,6 +399,35 @@ const Kasir = () => {
         headers: getAuthHeaders(),
       });
 
+      if (payload.id_pelanggan) {
+        try {
+          const res = await api.get("/transaksi/", {
+            headers: getAuthHeaders(),
+            params: { id_pelanggan: payload.id_pelanggan },
+          });
+
+          let latestHutang = 0;
+          if (
+            res.data &&
+            res.data.length > 0 &&
+            res.data[0].total_hutang !== undefined
+          ) {
+            latestHutang = res.data[0].total_hutang;
+          }
+
+          // ⬇ Tambah hutang baru jika kembalian < 0
+          const tambahanHutang = kembalian < 0 ? Math.abs(kembalian) : 0;
+          const totalAkhir = latestHutang + tambahanHutang;
+
+          setTotalHutangPelanggan(totalAkhir);
+        } catch (err) {
+          console.error("Gagal ambil total hutang:", err);
+          setTotalHutangPelanggan(kembalian < 0 ? Math.abs(kembalian) : 0);
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+
       showAlert("success", "Transaksi berhasil disimpan!");
       handlePrintStruk();
       showAlert("success", "Struk berhasil dicetak!");
@@ -414,6 +448,8 @@ const Kasir = () => {
   };
 
   const handleSubmitTanpaCetakStruk = async () => {
+    if (isSubmitting) return; // cegah double klik
+    setIsSubmitting(true);
     const id_kasir = Number(localStorage.getItem("id_kasir"));
     const id_lokasi = Number(localStorage.getItem("id_lokasi"));
 
@@ -469,6 +505,8 @@ const Kasir = () => {
         "Gagal menyimpan transaksi:\n" +
           (err.response?.data?.detail || err.message)
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -544,7 +582,13 @@ const Kasir = () => {
           },
         })
 
-        .then((res) => setDataHistoryTransaksi(res.data || []))
+        .then((res) => {
+          const sortedData = (res.data || []).sort(
+            (a, b) => b.id_transaksi - a.id_transaksi
+          );
+          setDataHistoryTransaksi(sortedData);
+        })
+
         .catch(() => setDataHistoryTransaksi([]))
         .finally(() => setLoadingHistoryTransaksi(false));
     }
@@ -577,7 +621,9 @@ const Kasir = () => {
       item.kategori?.toLowerCase().includes(searchProduk.toLowerCase()) ||
       item.satuan?.toLowerCase().includes(searchProduk.toLowerCase());
     const cocokLokasi = filterLokasi ? item.id_lokasi == filterLokasi : true;
-    return cocokCari && cocokLokasi;
+    const stokTersedia = Number(item.jumlah) > 0;
+
+    return cocokCari && cocokLokasi && stokTersedia;
   });
 
   return (
@@ -649,6 +695,12 @@ const Kasir = () => {
           <div className="capitalize">
             Pelanggan: {newItem.nama_pelanggan || "-"}
           </div>
+          {newItem.nama_pelanggan && totalHutangPelanggan !== null && (
+            <div>
+              Total Hutang: Rp
+              {Number(totalHutangPelanggan).toLocaleString("id-ID")}
+            </div>
+          )}
         </div>
       </div>
 
@@ -686,7 +738,15 @@ const Kasir = () => {
                   const found = produkList.find(
                     (item) => item.barcode === kode
                   );
-                  if (found) {
+
+                  if (!found) {
+                    showAlert("error", "Produk tidak ditemukan!");
+                  } else if (Number(found.jumlah) <= 0) {
+                    showAlert(
+                      "error",
+                      "Stok produk kosong, tidak dapat ditambahkan."
+                    );
+                  } else {
                     setDataPembelian((prev) => {
                       const idx = prev.findIndex(
                         (b) => b.id_produk === found.id_produk
@@ -707,9 +767,8 @@ const Kasir = () => {
                         },
                       ];
                     });
-                  } else {
-                    alert("Produk tidak ditemukan!");
                   }
+
                   e.target.value = "";
                 }
               }}
@@ -922,6 +981,7 @@ const Kasir = () => {
                   className="bg-gray-600 text-sm text-white px-4 py-2 rounded-[10px] w-full md:w-auto transition duration-300 ease-in-out transform hover:bg-gray-700 hover:scale-105 hover:shadow-lg"
                   type="button"
                   onClick={handleSubmitTanpaCetakStruk}
+                  disabled={isSubmitting}
                 >
                   Simpan
                 </button>
@@ -929,6 +989,7 @@ const Kasir = () => {
                   className="bg-black text-sm text-white px-4 py-2 rounded-[10px] w-full md:w-auto transition duration-300 ease-in-out transform hover:bg-gray-800 hover:scale-105 hover:shadow-lg"
                   type="button"
                   onClick={handleSubmitTransaksi}
+                  disabled={isSubmitting}
                 >
                   Simpan & Cetak
                 </button>

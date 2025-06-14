@@ -10,6 +10,8 @@ const Hutang = () => {
     };
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // State untuk rekap total hutang per pelanggan
   const [totalHutangList, setTotalHutangList] = useState([]);
   const [totalHutangLoading, setTotalHutangLoading] = useState(false);
@@ -71,6 +73,8 @@ const Hutang = () => {
   // Submit tambah hutang
   const handleSubmitTambahHutang = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // cegah double klik
+    setIsSubmitting(true);
     setTambahHutangLoading(true);
     setTambahHutangResult(null);
     try {
@@ -103,6 +107,8 @@ const Hutang = () => {
   // Submit bayar hutang
   const handleSubmitBayarHutang = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // cegah double klik
+    setIsSubmitting(true);
     setBayarHutangLoading(true);
     setBayarHutangResult(null);
     try {
@@ -127,6 +133,8 @@ const Hutang = () => {
       setBayarHutangResult({ error: "Gagal membayar hutang" });
       setBayarHutangLoading(false);
       showAlert("error", "Gagal membayar hutang!");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -225,6 +233,8 @@ const Hutang = () => {
   // Handler submit tambah hutang baru
   const handleSubmitTambahHutangBaru = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // cegah double klik
+    setIsSubmitting(true);
     if (!hutangBaruPelanggan || !hutangBaruPelanggan.id_pelanggan) {
       setHutangBaruResult({ error: "Pilih pelanggan terlebih dahulu!" });
       return;
@@ -254,12 +264,16 @@ const Hutang = () => {
     } catch (err) {
       setHutangBaruResult({ error: "Gagal menambah hutang" });
       setHutangBaruLoading(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Handler submit tambah pelanggan baru
   const handleSubmitTambahPelanggan = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // cegah double klik
+    setIsSubmitting(true);
     setTambahPelangganLoading(true);
     try {
       await api.post(
@@ -282,6 +296,8 @@ const Hutang = () => {
     } catch (err) {
       alert("Gagal menambah pelanggan!");
       setTambahPelangganLoading(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -301,7 +317,11 @@ const Hutang = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold mb-4">Tambah Hutang Baru</h2>
-            <form onSubmit={handleSubmitTambahHutangBaru} className="space-y-4">
+            <form
+              onSubmit={handleSubmitTambahHutangBaru}
+              disabled={isSubmitting}
+              className="space-y-4"
+            >
               <div>
                 <label className="block text-xs mb-1">Pilih Pelanggan</label>
                 <div className="relative">
@@ -479,6 +499,7 @@ const Hutang = () => {
                     <h2 className="text-lg font-bold mb-4">Tambah Pelanggan</h2>
                     <form
                       onSubmit={handleSubmitTambahPelanggan}
+                      disabled={isSubmitting}
                       className="space-y-4"
                     >
                       <div>
@@ -542,7 +563,11 @@ const Hutang = () => {
                 {modalTambahHutang.pelanggan.kontak}
               </div>
             </div>
-            <form onSubmit={handleSubmitTambahHutang} className="space-y-4">
+            <form
+              onSubmit={handleSubmitTambahHutang}
+              disabled={isSubmitting}
+              className="space-y-4"
+            >
               <div>
                 <label className="block text-xs mb-1">Nominal Hutang</label>
                 <input
@@ -608,7 +633,11 @@ const Hutang = () => {
                 {modalBayarHutang.pelanggan.kontak}
               </div>
             </div>
-            <form onSubmit={handleSubmitBayarHutang} className="space-y-4">
+            <form
+              onSubmit={handleSubmitBayarHutang}
+              disabled={isSubmitting}
+              className="space-y-4"
+            >
               <div>
                 <label className="block text-xs mb-1">Nominal Pembayaran</label>
                 <input

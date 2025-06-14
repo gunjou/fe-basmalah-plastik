@@ -76,6 +76,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <NavLink
             key={index}
             to={item.path}
+            title={!isOpen ? item.name : ""}
             className={({ isActive }) =>
               [
                 "w-full flex items-center gap-3 text-left p-3 rounded-lg transition",

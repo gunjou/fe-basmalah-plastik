@@ -4,6 +4,8 @@ import { IoQrCodeOutline } from "react-icons/io5";
 import api from "../utils/api";
 
 const DaftarPelanggan = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
 
   const showAlert = (type, message) => {
@@ -51,6 +53,8 @@ const DaftarPelanggan = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // cegah double klik
+    setIsSubmitting(true);
     try {
       await api.put(`/pelanggan/${editItem.id_pelanggan}`, {
         nama_pelanggan: editItem.nama_pelanggan,
@@ -66,6 +70,8 @@ const DaftarPelanggan = () => {
         "error",
         "Gagal mengedit pelanggan. Pastikan data sudah benar."
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -97,6 +103,8 @@ const DaftarPelanggan = () => {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // cegah double klik
+    setIsSubmitting(true);
     try {
       await api.post("/pelanggan/", {
         ...newItem,
@@ -111,6 +119,8 @@ const DaftarPelanggan = () => {
         "error",
         "Gagal menambahkan pelanggan. Pastikan data sudah benar."
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -323,7 +333,11 @@ const DaftarPelanggan = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold mb-4">Tambah Pelanggan</h2>
-            <form onSubmit={handleAddSubmit} className="space-y-3">
+            <form
+              onSubmit={handleAddSubmit}
+              disabled={isSubmitting}
+              className="space-y-3"
+            >
               <div>
                 <label className="block text-xs">Nama</label>
                 <input
@@ -382,7 +396,11 @@ const DaftarPelanggan = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold mb-4">Edit Pelanggan</h2>
-            <form onSubmit={handleEditSubmit} className="space-y-3">
+            <form
+              onSubmit={handleEditSubmit}
+              disabled={isSubmitting}
+              className="space-y-3"
+            >
               <div>
                 <label className="block text-xs">Nama</label>
                 <input
@@ -405,17 +423,7 @@ const DaftarPelanggan = () => {
                   className="border rounded px-2 py-1 w-full"
                 />
               </div>
-              {/* <div>
-                <label className="block text-xs">Alamat</label>
-                <input
-                  type="text"
-                  name="alamat"
-                  value={editItem.alamat}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div> */}
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"

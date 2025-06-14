@@ -5,10 +5,67 @@ import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import { FaExchangeAlt, FaEdit, FaTrash, FaBarcode } from "react-icons/fa";
 
+const InputField = ({
+  label,
+  name,
+  type = "text",
+  value,
+  onChange,
+  readOnly = false,
+  required = false,
+}) => (
+  <div className="w-full">
+    <label className="block text-xs mb-1">{label}</label>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      readOnly={readOnly}
+      required={required}
+      className="border rounded px-2 py-1 w-full"
+    />
+  </div>
+);
+
+const EditField = ({
+  label,
+  name,
+  type = "text",
+  value,
+  onChange,
+  readOnly = false,
+  required = false,
+}) => (
+  <div className="w-full">
+    <label className="block text-xs mb-1">{label}</label>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      readOnly={readOnly}
+      required={required}
+      className={`border rounded px-2 py-1 w-full ${
+        readOnly ? "bg-gray-100" : ""
+      }`}
+    />
+  </div>
+);
+
 const Stock = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
+
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    setTimeout(() => setAlert({ show: false, type: "", message: "" }), 2000);
+  };
+
   const handlePrintSelected = () => {
     if (selectedToPrint.length === 0) {
-      alert("Pilih setidaknya 1 produk untuk dicetak.");
+      showAlert("error", "Pilih setidaknya 1 produk untuk dicetak.");
       return;
     }
 
@@ -17,13 +74,16 @@ const Stock = () => {
     );
 
     if (invalid) {
-      alert("Isi jumlah cetak yang valid untuk semua produk yang dipilih.");
+      showAlert(
+        "error",
+        "Isi jumlah cetak yang valid untuk semua produk yang dipilih."
+      );
       return;
     }
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      alert("Pop-up diblokir. Izinkan pop-up di browser Anda.");
+      showAlert("error", "Pop-up diblokir. Izinkan pop-up di browser Anda.");
       return;
     }
 
@@ -216,7 +276,7 @@ const Stock = () => {
       data.some((item) => item.barcode === newItem.barcode);
 
     if (barcodeExists) {
-      alert("Barcode sudah terdaftar, cek kembali produk Anda.");
+      showAlert("error", "Barcode sudah terdaftar, cek kembali produk Anda.");
       return;
     }
     try {
@@ -231,6 +291,8 @@ const Stock = () => {
           satuan: editItem.satuan,
           harga_beli: Number(editItem.harga_beli),
           harga_jual: Number(editItem.harga_jual),
+          expired_date: editItem.expired_date,
+          stok_optimal: Number(editItem.stok_optimal),
           jumlah: Number(editItem.jumlah),
         },
         { headers: getAuthHeaders() }
@@ -243,11 +305,13 @@ const Stock = () => {
         headers: getAuthHeaders(),
         params: lokasiId ? { id_lokasi: lokasiId } : {},
       });
+      showAlert("success", "Barang berhasil di update");
       setData(res.data.data || []);
 
       closeModal();
     } catch (err) {
-      alert(
+      showAlert(
+        "error",
         "Gagal mengedit barang. Pastikan data sudah benar.\n\n" +
           (err.response?.data?.detail || err.message)
       );
@@ -262,6 +326,8 @@ const Stock = () => {
     satuan: "",
     harga_beli: "",
     harga_jual: "",
+    expired_date: "",
+    stok_optimal: "",
     jumlah: "",
   });
 
@@ -293,6 +359,8 @@ const Stock = () => {
       satuan: "",
       harga_beli: "",
       harga_jual: "",
+      expired_date: "",
+      stok_optimal: "",
       jumlah: "",
     });
     setAddModalOpen(true);
@@ -310,7 +378,10 @@ const Stock = () => {
   const handleAddSubmit = async (e) => {
     e.preventDefault();
 
-    // Izinkan barcode kosong. Tapi jika diisi, pastikan unik.
+    if (isSubmitting) return; // Hindari submit ganda
+
+    setIsSubmitting(true); // Mulai loading
+
     const trimmedBarcode = newItem.barcode.trim();
 
     if (
@@ -319,7 +390,8 @@ const Stock = () => {
         (item) => item.barcode && item.barcode.trim() === trimmedBarcode
       )
     ) {
-      alert("Barcode sudah terdaftar, cek kembali produk Anda.");
+      showAlert("error", "barcode sudah terdaftar, cek kembali produk anda");
+      setIsSubmitting(false);
       return;
     }
 
@@ -330,27 +402,31 @@ const Stock = () => {
           id_produk: null,
           id_lokasi: Number(selectedLokasi || userLokasi),
           nama_produk: newItem.nama_produk,
-          barcode: trimmedBarcode, // kirim yang sudah trim
+          barcode: trimmedBarcode,
           kategori: newItem.kategori,
           satuan: newItem.satuan,
           harga_beli: Number(newItem.harga_beli),
           harga_jual: Number(newItem.harga_jual),
+          expired_date: newItem.expired_date,
+          stok_optimal: Number(newItem.stok_optimal),
           jumlah: Number(newItem.jumlah),
         },
         { headers: getAuthHeaders() }
       );
 
-      // Refresh data
       const lokasiId = role === "admin" ? selectedLokasi : userLokasi;
       const res = await api.get("/stok/", {
         headers: getAuthHeaders(),
         params: lokasiId ? { id_lokasi: lokasiId } : {},
       });
-      setData(res.data.data || []);
 
+      showAlert("success", "Berhasil menambah barang");
+      setData(res.data.data || []);
       closeAddModal();
     } catch (err) {
-      alert("Gagal menambah barang. Pastikan data sudah benar.");
+      showAlert("error", "Gagal menambah barang. Pastikan data sudah benar");
+    } finally {
+      setIsSubmitting(false); // Selesai loading
     }
   };
 
@@ -531,7 +607,7 @@ const Stock = () => {
           item.keterangan.trim() === ""
       )
     ) {
-      alert("Lengkapi semua data mutasi dan keterangan produk!");
+      showAlert("error", "Lengkapi semua data mutasi dan keterangan produk!");
       return;
     }
 
@@ -560,10 +636,10 @@ const Stock = () => {
 
       setMutasiItems([]);
       closeMutasiModal();
-      alert("Mutasi berhasil dikirim!");
+      showAlert("success", "Mutasi berhasil dikirim!");
       window.location.reload(); // Refresh halaman setelah mut
     } catch (err) {
-      alert("Gagal melakukan mutasi stok.");
+      showAlert("error", "Gagal melakukan mutasi stok.");
     }
   };
 
@@ -575,10 +651,11 @@ const Stock = () => {
           headers: getAuthHeaders(),
         });
         // Refresh data setelah hapus
+        showAlert("success", "Barang berhasil dihapus");
         const res = await api.get("/stok/");
         setData(res.data.data);
       } catch (err) {
-        alert("Gagal menghapus barang.");
+        showAlert("error", "Gagal menghapus barang.");
       }
     }
   };
@@ -625,6 +702,17 @@ const Stock = () => {
 
   return (
     <div className="">
+      {alert.show && (
+        <div
+          className={`fixed top-4 left-1/2 z-[9999] -translate-x-1/2 px-6 py-3 rounded shadow-lg text-white text-sm font-semibold ${
+            alert.type === "success" ? "bg-green-600" : "bg-red-600"
+          }`}
+          style={{ minWidth: 220, textAlign: "center" }}
+        >
+          {alert.message}
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold pb-2">Stock</h1>
       <div className="bg-white rounded-[20px] py-4 px-6 shadow-md">
         <div className="flex items-center gap-4 mb-4">
@@ -747,6 +835,7 @@ const Stock = () => {
                   </th>
                   <th className="px-0.5 py-0.5">Kategori</th>
                   <th className="px-0.5 py-0.5">Satuan</th>
+                  <th className="px-0.5 py-0.5 text-center">Experied</th>
                   <th
                     className="px-0.5 py-0.5 cursor-pointer select-none"
                     onClick={() => handleSort("harga_beli")}
@@ -771,6 +860,8 @@ const Stock = () => {
                       />
                     </div>
                   </th>
+
+                  <th className="px-0.5 py-0.5 text-center">Optimal</th>
                   <th
                     className="px-1 py-0.5 cursor-pointer select-none"
                     onClick={() => handleSort("jumlah")}
@@ -780,6 +871,7 @@ const Stock = () => {
                       <SortIcon active={sortBy === "jumlah"} asc={sortAsc} />
                     </div>
                   </th>
+
                   <th className="px-0.5 py-0.5 text-center">Action</th>
                   <th className="px-0.5 py-0.5 text-center">Cetak</th>
                 </tr>
@@ -805,6 +897,19 @@ const Stock = () => {
                       <td className="px-0.5 py-0.5 capitalize text-center">
                         {item.satuan}
                       </td>
+                      <td className="px-0.5 py-0.5 text-center">
+                        {item.expired_date
+                          ? new Date(item.expired_date).toLocaleDateString(
+                              "id-ID",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "2-digit",
+                              }
+                            )
+                          : "-"}
+                      </td>
+
                       <td className="px-1 py-1">
                         Rp.
                         {Number(item.harga_beli).toLocaleString("id-ID")}
@@ -814,8 +919,18 @@ const Stock = () => {
                         {Number(item.harga_jual).toLocaleString("id-ID")}
                       </td>
                       <td className="px-0.5 py-0.5 text-center">
+                        {item.stok_optimal}
+                      </td>
+                      <td
+                        className={`px-0.5 py-0.5 text-center font-semibold ${
+                          item.jumlah < item.stok_optimal
+                            ? "text-red-600"
+                            : "text-gray-700"
+                        }`}
+                      >
                         {item.jumlah}
                       </td>
+
                       <td className="px-0.5 py-0.5">
                         {!readOnly && (
                           <button
@@ -1000,130 +1115,81 @@ const Stock = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">Tambah Stock Barang</h2>
-              {/* <button
-                type="button"
-                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-[#1E686D] transition"
-                title="Scan QR"
-              >
-                <IoQrCodeOutline size={22} />
-              </button> */}
             </div>
             <p className="text-xs mb-4 text-gray-400">
               Tambahkan detail barang
             </p>
-            <form onSubmit={handleAddSubmit} className="space-y-0.5">
-              <div>
-                <label className="block text-xs">Nama Barang</label>
-                <input
-                  type="text"
-                  name="nama_produk"
-                  value={newItem.nama_produk}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Barcode</label>
-                <input
-                  type="text"
-                  name="barcode"
-                  value={newItem.barcode}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Kategori</label>
-                <input
-                  type="text"
-                  name="kategori"
-                  value={newItem.kategori}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Satuan</label>
-                <input
-                  type="text"
-                  name="satuan"
-                  value={newItem.satuan}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div>
-              {/* <div>
-                <label className="block text-xs">Kategori</label>
-                <select
-                  name="kategori"
-                  value={newItem.kategori}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                >
-                  <option value="">Pilih kategori</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.nama}>
-                      {cat.nama}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs">Satuan</label>
-                <select
-                  name="satuan"
-                  value={newItem.satuan}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                >
-                  <option value="">Pilih satuan</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.nama}>
-                      {unit.nama}
-                    </option>
-                  ))}
-                </select>
-              </div> */}
-              <div>
-                <label className="block text-xs">Harga Beli</label>
-                <input
-                  type="number"
-                  name="harga_beli"
-                  value={newItem.harga_beli.to}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Harga Jual</label>
-                <input
-                  type="number"
-                  name="harga_jual"
-                  value={newItem.harga_jual}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Jumlah Stock</label>
-                <input
-                  type="number"
-                  name="jumlah"
-                  value={newItem.jumlah}
-                  onChange={handleAddChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div>
+            <form
+              onSubmit={handleAddSubmit}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+            >
+              <InputField
+                label="Nama Barang"
+                name="nama_produk"
+                value={newItem.nama_produk}
+                onChange={handleAddChange}
+                required
+              />
+              <InputField
+                label="Barcode"
+                name="barcode"
+                value={newItem.barcode}
+                onChange={handleAddChange}
+              />
+              <InputField
+                label="Kategori"
+                name="kategori"
+                value={newItem.kategori}
+                onChange={handleAddChange}
+                required
+              />
+              <InputField
+                label="Satuan"
+                name="satuan"
+                value={newItem.satuan}
+                onChange={handleAddChange}
+                required
+              />
+              <InputField
+                label="Harga Beli"
+                name="harga_beli"
+                type="number"
+                value={newItem.harga_beli}
+                onChange={handleAddChange}
+                required
+              />
+              <InputField
+                label="Harga Jual"
+                name="harga_jual"
+                type="number"
+                value={newItem.harga_jual}
+                onChange={handleAddChange}
+                required
+              />
+              <InputField
+                label="Expired Date"
+                name="expired_date"
+                type="date"
+                value={newItem.expired_date}
+                onChange={handleAddChange}
+              />
+              <InputField
+                label="Stok Optimal"
+                name="stok_optimal"
+                type="number"
+                value={newItem.stok_optimal}
+                onChange={handleAddChange}
+              />
+              <InputField
+                label="Jumlah Stock"
+                name="jumlah"
+                type="number"
+                value={newItem.jumlah}
+                onChange={handleAddChange}
+                required
+              />
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={closeAddModal}
@@ -1149,130 +1215,86 @@ const Stock = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
             <h2 className="text-lg font-bold">Edit Stock Barang</h2>
             <p className="text-xs mb-4 text-gray-400">Ubah detail barang</p>
-            <form onSubmit={handleEditSubmit} className="space-y-0.5">
-              <div>
-                <label className="block text-xs">Nama Barang</label>
-                <input
-                  type="text"
-                  name="nama_produk"
-                  value={editItem.nama_produk}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                  readOnly={readOnly}
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Barcode</label>
-                <input
-                  type="text"
-                  name="barcode"
-                  value={editItem.barcode}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                  readOnly={readOnly}
-                />
-              </div>
+            <form
+              onSubmit={handleEditSubmit}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+            >
+              <EditField
+                label="Nama Barang"
+                name="nama_produk"
+                value={editItem.nama_produk}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+                required
+              />
+              <EditField
+                label="Barcode"
+                name="barcode"
+                value={editItem.barcode}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+              />
+              <EditField
+                label="Kategori"
+                name="kategori"
+                value={editItem.kategori}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+                required
+              />
+              <EditField
+                label="Satuan"
+                name="satuan"
+                value={editItem.satuan}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+                required
+              />
+              <EditField
+                label="Harga Beli"
+                name="harga_beli"
+                type="number"
+                value={editItem.harga_beli}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+                required
+              />
+              <EditField
+                label="Harga Jual"
+                name="harga_jual"
+                type="number"
+                value={editItem.harga_jual}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+                required
+              />
+              <EditField
+                label="Expired Date"
+                name="expired_date"
+                type="date"
+                value={editItem.expired_date}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+              />
+              <EditField
+                label="Stok Optimal"
+                name="stok_optimal"
+                type="number"
+                value={editItem.stok_optimal}
+                onChange={handleEditChange}
+                readOnly={readOnly}
+              />
+              <EditField
+                label="Jumlah Stock"
+                name="jumlah"
+                type="number"
+                value={editItem.jumlah}
+                onChange={handleEditChange}
+                required
+                readOnly={false}
+              />
 
-              <div>
-                <label className="block text-xs">Kategori</label>
-                <input
-                  type="text"
-                  name="kategori"
-                  value={editItem.kategori}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                  readOnly={readOnly}
-                />
-              </div>
-
-              {/* <div>
-                <label className="block text-xs">Kategori</label>
-                <select
-                  name="kategori"
-                  value={editItem.kategori || editItem.kategori || ""}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                >
-                  <option value="">Pilih kategori</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.nama}>
-                      {cat.nama}
-                    </option>
-                  ))}
-                </select>
-              </div> */}
-
-              <div>
-                <label className="block text-xs">Satuan</label>
-                <input
-                  type="text"
-                  name="satuan"
-                  value={editItem.satuan}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                  readOnly={readOnly}
-                />
-              </div>
-
-              {/* <div>
-                <label className="block text-xs">Satuan</label>
-                <select
-                  name="satuan"
-                  value={editItem.satuan || editItem.satuan || ""} // gunakan value dari data yang sedang diedit
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                >
-                  <option value="">Pilih satuan</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.nama}>
-                      {unit.nama}
-                    </option>
-                  ))}
-                </select>
-              </div> */}
-
-              <div>
-                <label className="block text-xs">Harga Beli</label>
-                <input
-                  type="number"
-                  name="harga_beli"
-                  value={editItem.harga_beli}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                  readOnly={readOnly}
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Harga Jual</label>
-                <input
-                  type="number"
-                  name="harga_jual"
-                  value={editItem.harga_jual}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                  readOnly={readOnly}
-                />
-              </div>
-              <div>
-                <label className="block text-xs">Jumlah Stock</label>
-                <input
-                  type="number"
-                  name="jumlah"
-                  value={editItem.jumlah}
-                  onChange={handleEditChange}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={closeModal}
