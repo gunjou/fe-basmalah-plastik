@@ -25,6 +25,13 @@ const getAuthHeaders = () => {
   };
 };
 
+const capitalizeWords = (str) =>
+  str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
 const Kasir = () => {
   const getUserRole = () => localStorage.getItem("role"); // "admin" atau "kasir"
   const getUserLokasi = () => localStorage.getItem("id_lokasi");
@@ -353,9 +360,40 @@ const Kasir = () => {
     setTimeout(() => setAlert({ show: false, type: "", message: "" }), 2000);
   };
 
+  useEffect(() => {
+    const fetchHutangPelanggan = async () => {
+      if (!newItem.id_pelanggan) return;
+
+      try {
+        const res = await api.get("/transaksi/", {
+          headers: getAuthHeaders(),
+          params: { id_pelanggan: newItem.id_pelanggan },
+        });
+
+        let latestHutang = 0;
+        if (
+          res.data &&
+          res.data.length > 0 &&
+          res.data[0].total_hutang !== undefined
+        ) {
+          latestHutang = res.data[0].total_hutang;
+        }
+        const tambahanHutang = kembalian < 0 ? Math.abs(kembalian) : 0;
+        const totalAkhir = latestHutang + tambahanHutang;
+        setTotalHutangPelanggan(totalAkhir); // <- ini sudah benar
+        //setTotalHutangPelanggan(latestHutang);
+      } catch (err) {
+        console.error("Gagal ambil total hutang:", err);
+        setTotalHutangPelanggan(null);
+      }
+    };
+
+    fetchHutangPelanggan();
+  }, [newItem.id_pelanggan]);
+
   const handleSubmitTransaksi = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    // if (isSubmitting) return;
+    // setIsSubmitting(true);
     const id_kasir = Number(localStorage.getItem("id_kasir"));
     const id_lokasi = Number(localStorage.getItem("id_lokasi"));
 
@@ -399,35 +437,6 @@ const Kasir = () => {
         headers: getAuthHeaders(),
       });
 
-      if (payload.id_pelanggan) {
-        try {
-          const res = await api.get("/transaksi/", {
-            headers: getAuthHeaders(),
-            params: { id_pelanggan: payload.id_pelanggan },
-          });
-
-          let latestHutang = 0;
-          if (
-            res.data &&
-            res.data.length > 0 &&
-            res.data[0].total_hutang !== undefined
-          ) {
-            latestHutang = res.data[0].total_hutang;
-          }
-
-          // ⬇ Tambah hutang baru jika kembalian < 0
-          const tambahanHutang = kembalian < 0 ? Math.abs(kembalian) : 0;
-          const totalAkhir = latestHutang + tambahanHutang;
-
-          setTotalHutangPelanggan(totalAkhir);
-        } catch (err) {
-          console.error("Gagal ambil total hutang:", err);
-          setTotalHutangPelanggan(kembalian < 0 ? Math.abs(kembalian) : 0);
-        } finally {
-          setIsSubmitting(false);
-        }
-      }
-
       showAlert("success", "Transaksi berhasil disimpan!");
       handlePrintStruk();
       showAlert("success", "Struk berhasil dicetak!");
@@ -445,11 +454,14 @@ const Kasir = () => {
           (err.response?.data?.detail || err.message)
       );
     }
+    // finally {
+    //   setIsSubmitting(false);
+    // }
   };
 
   const handleSubmitTanpaCetakStruk = async () => {
-    if (isSubmitting) return; // cegah double klik
-    setIsSubmitting(true);
+    //if (isSubmitting) return; // cegah double klik
+    //setIsSubmitting(true);
     const id_kasir = Number(localStorage.getItem("id_kasir"));
     const id_lokasi = Number(localStorage.getItem("id_lokasi"));
 
@@ -505,9 +517,10 @@ const Kasir = () => {
         "Gagal menyimpan transaksi:\n" +
           (err.response?.data?.detail || err.message)
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    // finally {
+    //   setIsSubmitting(false);
+    // }
   };
 
   const scanInputRef = useRef(null);
@@ -653,12 +666,12 @@ const Kasir = () => {
             {dataPembelian.map((item, idx) => (
               <tr key={idx}>
                 <td className="capitalize">
-                  {item.nama_produk.length > 18
-                    ? item.nama_produk.slice(0, 18) + "…"
-                    : item.nama_produk}
+                  {capitalizeWords(item.nama_produk).length > 18
+                    ? capitalizeWords(item.nama_produk).slice(0, 18) + "…"
+                    : capitalizeWords(item.nama_produk)}
                 </td>
                 <td align="center" className="capitalize">
-                  {item.satuan}
+                  {capitalizeWords(item.satuan)}
                 </td>
                 <td align="center" className="capitalize">
                   {item.qty}
@@ -692,9 +705,8 @@ const Kasir = () => {
               : `Kembali: Rp${kembalian.toLocaleString("id-ID")}`}
           </div>
 
-          <div className="capitalize">
-            Pelanggan: {newItem.nama_pelanggan || "-"}
-          </div>
+          <div>Pelanggan: {capitalizeWords(newItem.nama_pelanggan || "-")}</div>
+
           {newItem.nama_pelanggan && totalHutangPelanggan !== null && (
             <div>
               Total Hutang: Rp
@@ -899,25 +911,6 @@ const Kasir = () => {
                   className="text-sm text-end border rounded-lg px-2 w-40"
                 />
               </div>
-
-              {/* <div className="flex justify-between">
-                <label className="text-sm text-gray-700 pr-2">Kembalian</label>
-                <input
-                  type="text"
-                  value={
-                    kembalian < 0
-                      ? `Hutang: Rp. ${Math.abs(kembalian).toLocaleString(
-                          "id-ID"
-                        )}`
-                      : `Kembali: Rp. ${kembalian.toLocaleString("id-ID")}`
-                  }
-                  className={`text-sm text-end border rounded-lg px-2 w-40 ${
-                    kembalian < 0 ? "text-red-700" : "text-green-700"
-                  }`}
-                  readOnly
-                />
-
-                       </div> */}
               <div className="flex justify-between">
                 <label
                   className={`text-sm pr-2 font-semibold ${
@@ -981,7 +974,7 @@ const Kasir = () => {
                   className="bg-gray-600 text-sm text-white px-4 py-2 rounded-[10px] w-full md:w-auto transition duration-300 ease-in-out transform hover:bg-gray-700 hover:scale-105 hover:shadow-lg"
                   type="button"
                   onClick={handleSubmitTanpaCetakStruk}
-                  disabled={isSubmitting}
+                  //disabled={isSubmitting}
                 >
                   Simpan
                 </button>
@@ -989,7 +982,7 @@ const Kasir = () => {
                   className="bg-black text-sm text-white px-4 py-2 rounded-[10px] w-full md:w-auto transition duration-300 ease-in-out transform hover:bg-gray-800 hover:scale-105 hover:shadow-lg"
                   type="button"
                   onClick={handleSubmitTransaksi}
-                  disabled={isSubmitting}
+                  //disabled={isSubmitting}
                 >
                   Simpan & Cetak
                 </button>

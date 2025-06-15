@@ -294,7 +294,7 @@ const Hutang = () => {
         .then((res) => setPelangganList(res.data || []))
         .finally(() => setPelangganLoading(false));
     } catch (err) {
-      alert("Gagal menambah pelanggan!");
+      showAlert("error", "Gagal menambah pelanggan!");
       setTambahPelangganLoading(false);
     } finally {
       setIsSubmitting(false);
