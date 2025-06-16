@@ -291,8 +291,12 @@ const Stock = () => {
           satuan: editItem.satuan,
           harga_beli: Number(editItem.harga_beli),
           harga_jual: Number(editItem.harga_jual),
-          expired_date: editItem.expired_date,
-          stok_optimal: Number(editItem.stok_optimal),
+          expired_date:
+            newItem.expired_date.trim() === "" ? null : newItem.expired_date,
+          stok_optimal:
+            newItem.stok_optimal.trim() === ""
+              ? 0
+              : Number(newItem.stok_optimal),
           jumlah: Number(editItem.jumlah),
         },
         { headers: getAuthHeaders() }
@@ -407,8 +411,12 @@ const Stock = () => {
           satuan: newItem.satuan,
           harga_beli: Number(newItem.harga_beli),
           harga_jual: Number(newItem.harga_jual),
-          expired_date: newItem.expired_date,
-          stok_optimal: Number(newItem.stok_optimal),
+          expired_date:
+            newItem.expired_date.trim() === "" ? null : newItem.expired_date,
+          stok_optimal:
+            newItem.stok_optimal.trim() === ""
+              ? 0
+              : Number(newItem.stok_optimal),
           jumlah: Number(newItem.jumlah),
         },
         { headers: getAuthHeaders() }
