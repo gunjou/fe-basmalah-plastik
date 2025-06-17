@@ -292,11 +292,11 @@ const Stock = () => {
           harga_beli: Number(editItem.harga_beli),
           harga_jual: Number(editItem.harga_jual),
           expired_date:
-            newItem.expired_date.trim() === "" ? null : newItem.expired_date,
+            editItem.expired_date.trim() === "" ? null : editItem.expired_date,
           stok_optimal:
-            newItem.stok_optimal.trim() === ""
+            editItem.stok_optimal.trim() === ""
               ? 0
-              : Number(newItem.stok_optimal),
+              : Number(editItem.stok_optimal),
           jumlah: Number(editItem.jumlah),
         },
         { headers: getAuthHeaders() }
