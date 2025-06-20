@@ -1,6 +1,6 @@
 {
   "name": "fe-basmalah-plastik",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.0",

@@ -270,15 +270,7 @@ const Stock = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-    // Cek barcode sudah ada
-    const barcodeExists =
-      newItem.barcode.trim() !== "" &&
-      data.some((item) => item.barcode === newItem.barcode);
 
-    if (barcodeExists) {
-      showAlert("error", "Barcode sudah terdaftar, cek kembali produk Anda.");
-      return;
-    }
     try {
       await api.put(
         `/stok/${editItem.id_stok}`,
@@ -286,15 +278,17 @@ const Stock = () => {
           id_produk: editItem.id_produk,
           id_lokasi: Number(selectedLokasi || userLokasi),
           nama_produk: editItem.nama_produk,
-          barcode: editItem.barcode,
+          barcode: editItem.barcode?.trim() || "", // boleh kosong
           kategori: editItem.kategori,
           satuan: editItem.satuan,
           harga_beli: Number(editItem.harga_beli),
           harga_jual: Number(editItem.harga_jual),
           expired_date:
-            editItem.expired_date.trim() === "" ? null : editItem.expired_date,
+            (editItem.expired_date || "").trim() === ""
+              ? null
+              : editItem.expired_date,
           stok_optimal:
-            editItem.stok_optimal.trim() === ""
+            (editItem.stok_optimal || "").toString().trim() === ""
               ? 0
               : Number(editItem.stok_optimal),
           jumlah: Number(editItem.jumlah),
@@ -302,16 +296,16 @@ const Stock = () => {
         { headers: getAuthHeaders() }
       );
 
-      // Refresh data produk setelah edit
+      // Ambil data terbaru
       const lokasiId = role === "admin" ? selectedLokasi : userLokasi;
 
       const res = await api.get("/stok/", {
         headers: getAuthHeaders(),
         params: lokasiId ? { id_lokasi: lokasiId } : {},
       });
+
       showAlert("success", "Barang berhasil di update");
       setData(res.data.data || []);
-
       closeModal();
     } catch (err) {
       showAlert(
@@ -405,6 +399,7 @@ const Stock = () => {
         {
           id_produk: null,
           id_lokasi: Number(selectedLokasi || userLokasi),
+
           nama_produk: newItem.nama_produk,
           barcode: trimmedBarcode,
           kategori: newItem.kategori,
@@ -880,7 +875,9 @@ const Stock = () => {
                     </div>
                   </th>
 
-                  <th className="px-0.5 py-0.5 text-center">Action</th>
+                  <th className="px-0.5 py-0.5 text-center">Mutasi</th>
+                  <th className="px-0.5 py-0.5 text-center">Edit</th>
+                  <th className="px-0.5 py-0.5 text-center">Hapus</th>
                   <th className="px-0.5 py-0.5 text-center">Cetak</th>
                 </tr>
               </thead>
@@ -939,7 +936,8 @@ const Stock = () => {
                         {item.jumlah}
                       </td>
 
-                      <td className="px-0.5 py-0.5">
+                      {/* Kolom Mutasi */}
+                      <td className="px-0.5 py-0.5 text-center">
                         {!readOnly && (
                           <button
                             className="bg-[#1E686D] hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
@@ -949,16 +947,24 @@ const Stock = () => {
                             <FaExchangeAlt />
                           </button>
                         )}
+                      </td>
+
+                      {/* Kolom Edit */}
+                      <td className="px-0.5 py-0.5 text-center">
                         <button
-                          className="ml-1 bg-green-500 hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
+                          className="bg-green-500 hover:bg-green-600 text-white px-1 py-1 rounded-[10px] text-xs"
                           onClick={() => openEditModal(item)}
                           title="Edit"
                         >
                           <FaEdit />
                         </button>
+                      </td>
+
+                      {/* Kolom Hapus */}
+                      <td className="px-0.5 py-0.5 text-center">
                         {!readOnly && (
                           <button
-                            className="ml-1 bg-red-600 hover:bg-red-700 text-white px-1 py-1 rounded-[10px] text-xs"
+                            className="bg-red-600 hover:bg-red-700 text-white px-1 py-1 rounded-[10px] text-xs"
                             onClick={() => handleDelete(item)}
                             title="Hapus"
                           >
@@ -966,6 +972,7 @@ const Stock = () => {
                           </button>
                         )}
                       </td>
+
                       <td className="px-0.5 py-0.5">
                         <input
                           type="checkbox"
